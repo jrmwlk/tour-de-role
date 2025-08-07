@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -40,27 +39,86 @@
     tr:nth-child(even) {
       background-color: #1c1c1c;
     }
+    .card {
+      background: #1c1c1c;
+      border-radius: 10px;
+      padding: 1em;
+      margin-bottom: 1em;
+    }
+    .fonction-label {
+      margin-right: 0.5em;
+    }
   </style>
 </head>
 <body>
   <header>📋 Tour de Rôle</header>
-  <label for="date">Date : </label>
-  <input type="date" id="date" />
-  <button onclick="loadData()">🔄 Charger</button>
-  <table id="dataTable">
-    <thead>
-      <tr><th>Nom</th><th>Fonction</th><th>Shift</th><th>Commentaire</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+
+  <section class="card">
+    <h3>🆕 Ajouter Journée</h3>
+    <label for="ajoutDate">Date : </label>
+    <input type="date" id="ajoutDate" />
+    <div id="ajoutEquipe"></div>
+    <button onclick="validerJournee()">✅ Valider</button>
+  </section>
+
+  <section class="card">
+    <h3>📅 Consulter Planning</h3>
+    <label for="date">Date : </label>
+    <input type="date" id="date" />
+    <button onclick="loadData()">🔄 Charger</button>
+    <table id="dataTable">
+      <thead>
+        <tr><th>Nom</th><th>Fonction</th><th>Shift</th><th>Commentaire</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
   <script>
     const sheetId = "1tQDNxbChISOOeSH9vdom5vV8bBtID1jv3vXuwqKiY_A";
-    const sheetName = "Feuille 1";
-    const base = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?sheet=${sheetName}`;
+    const equipeSheet = "ÉQUIPE";
+    const mainSheet = "Feuille 1";
+
+    const gvizUrl = (sheet, query = "") =>
+      `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?sheet=${sheet}&tq=${encodeURIComponent(query)}`;
+
+    async function getEquipe() {
+      const res = await fetch(gvizUrl(equipeSheet));
+      const text = await res.text();
+      const json = JSON.parse(text.substr(47).slice(0, -2));
+      const rows = json.table.rows;
+
+      const header = json.table.cols.map(col => col.label);
+      const fonctions = header.slice(1); // CM, HC, STR, CPO, SPE
+
+      const container = document.getElementById("ajoutEquipe");
+      container.innerHTML = "";
+
+      for (const row of rows) {
+        const values = row.c.map(c => (c && c.v ? c.v : ""));
+        const nom = values[0];
+        if (!nom) continue;
+
+        const div = document.createElement("div");
+        div.innerHTML = `<strong>${nom}</strong>`;
+
+        fonctions.forEach((fonction, i) => {
+          if (values[i + 1]) {
+            const id = `${nom}_${fonction}`.replace(/\s+/g, "_");
+            div.innerHTML += `
+              <label class="fonction-label">
+                <input type="radio" name="fonction_${nom}" value="${fonction}" id="${id}"> ${fonction}
+              </label>`;
+          }
+        });
+
+        container.appendChild(div);
+      }
+    }
 
     async function loadData() {
       const date = document.getElementById("date").value;
-      const res = await fetch(base);
+      const res = await fetch(gvizUrl(mainSheet));
       const text = await res.text();
       const json = JSON.parse(text.substr(47).slice(0, -2));
 
@@ -85,6 +143,12 @@
         }
       }
     }
+
+    function validerJournee() {
+      alert("⚠️ Enregistrement non activé dans cette version. Prévu avec Apps Script ou API privée.");
+    }
+
+    getEquipe();
   </script>
 </body>
 </html>
