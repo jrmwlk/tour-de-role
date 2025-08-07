@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -32,6 +33,7 @@
     th, td {
       padding: 0.5em;
       border: 1px solid #444;
+      text-align: center;
     }
     th {
       background-color: #222;
@@ -45,9 +47,6 @@
       padding: 1em;
       margin-bottom: 1em;
     }
-    .fonction-label {
-      margin-right: 0.5em;
-    }
   </style>
 </head>
 <body>
@@ -57,7 +56,12 @@
     <h3>🆕 Ajouter Journée</h3>
     <label for="ajoutDate">Date : </label>
     <input type="date" id="ajoutDate" />
-    <div id="ajoutEquipe"></div>
+    <div id="ajoutEquipeContainer">
+      <table id="ajoutEquipeTable">
+        <thead><tr><th>NOM</th><th>CM</th><th>HC</th><th>STR</th><th>CPO</th><th>SPE</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
     <button onclick="validerJournee()">✅ Valider</button>
   </section>
 
@@ -87,32 +91,29 @@
       const text = await res.text();
       const json = JSON.parse(text.substr(47).slice(0, -2));
       const rows = json.table.rows;
-
       const header = json.table.cols.map(col => col.label);
-      const fonctions = header.slice(1); // CM, HC, STR, CPO, SPE
+      const fonctions = header.slice(1); // CM, HC, STR, etc.
 
-      const container = document.getElementById("ajoutEquipe");
-      container.innerHTML = "";
+      const tbody = document.querySelector("#ajoutEquipeTable tbody");
+      tbody.innerHTML = "";
 
       for (const row of rows) {
         const values = row.c.map(c => (c && c.v ? c.v : ""));
         const nom = values[0];
         if (!nom) continue;
 
-        const div = document.createElement("div");
-        div.innerHTML = `<strong>${nom}</strong>`;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${nom}</td>`;
 
         fonctions.forEach((fonction, i) => {
-          if (values[i + 1]) {
-            const id = `${nom}_${fonction}`.replace(/\s+/g, "_");
-            div.innerHTML += `
-              <label class="fonction-label">
-                <input type="radio" name="fonction_${nom}" value="${fonction}" id="${id}"> ${fonction}
-              </label>`;
-          }
+          const id = `${nom}_${fonction}`.replace(/\s+/g, "_");
+          const checked = values[i + 1] ?
+            `<input type='radio' name='fonction_${nom}' value='${fonction}' id='${id}' />` :
+            "";
+          tr.innerHTML += `<td>${checked}</td>`;
         });
 
-        container.appendChild(div);
+        tbody.appendChild(tr);
       }
     }
 
@@ -145,7 +146,7 @@
     }
 
     function validerJournee() {
-      alert("⚠️ Enregistrement non activé dans cette version. Prévu avec Apps Script ou API privée.");
+      alert("⚠️ L'enregistrement n'est pas encore activé. Prévu via Google Apps Script ou API sécurisée.");
     }
 
     getEquipe();
