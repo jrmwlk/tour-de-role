@@ -58,7 +58,7 @@
     <input type="date" id="ajoutDate" />
     <div id="ajoutEquipeContainer">
       <table id="ajoutEquipeTable">
-        <thead><tr><th>NOM</th><th>CM</th><th>HC</th><th>STR</th><th>CPO</th><th>SPE</th></tr></thead>
+        <thead><tr id="ajoutEquipeHeader"></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -91,11 +91,16 @@
       const text = await res.text();
       const json = JSON.parse(text.substr(47).slice(0, -2));
       const rows = json.table.rows;
-      const header = json.table.cols.map(col => col.label);
-      const fonctions = header.slice(1); // CM, HC, STR, etc.
+      const header = json.table.cols.map(col => col.label).filter(h => h);
+      const fonctions = header.slice(1); // Toutes sauf NOM
 
+      const thead = document.getElementById("ajoutEquipeHeader");
       const tbody = document.querySelector("#ajoutEquipeTable tbody");
+      thead.innerHTML = "";
       tbody.innerHTML = "";
+
+      // Crée les en-têtes du tableau
+      thead.innerHTML = "<th>" + header.join("</th><th>") + "</th>";
 
       for (const row of rows) {
         const values = row.c.map(c => (c && c.v ? c.v : ""));
@@ -107,10 +112,11 @@
 
         fonctions.forEach((fonction, i) => {
           const id = `${nom}_${fonction}`.replace(/\s+/g, "_");
-          const checked = values[i + 1] ?
-            `<input type='radio' name='fonction_${nom}' value='${fonction}' id='${id}' />` :
-            "";
-          tr.innerHTML += `<td>${checked}</td>`;
+          const isActive = values[i + 1] ? true : false;
+          const cell = isActive
+            ? `<input type='radio' name='fonction_${nom}' value='${fonction}' id='${id}' />`
+            : "";
+          tr.innerHTML += `<td>${cell}</td>`;
         });
 
         tbody.appendChild(tr);
