@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tour de Rôle</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #121212;
+      color: white;
+      margin: 0;
+      padding: 1em;
+    }
+    header {
+      text-align: center;
+      font-size: 1.5em;
+      margin-bottom: 1em;
+    }
+    input, select, button {
+      font-size: 1em;
+      padding: 0.5em;
+      margin: 0.25em;
+      border-radius: 5px;
+      border: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+    }
+    th, td {
+      padding: 0.5em;
+      border: 1px solid #444;
+    }
+    th {
+      background-color: #222;
+    }
+    tr:nth-child(even) {
+      background-color: #1c1c1c;
+    }
+  </style>
+</head>
+<body>
+  <header>📋 Tour de Rôle</header>
+  <label for="date">Date : </label>
+  <input type="date" id="date" />
+  <button onclick="loadData()">🔄 Charger</button>
+  <table id="dataTable">
+    <thead>
+      <tr><th>Nom</th><th>Fonction</th><th>Shift</th><th>Commentaire</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    const sheetId = "1tQDNxbChISOOeSH9vdom5vV8bBtID1jv3vXuwqKiY_A";
+    const sheetName = "Feuille 1";
+    const base = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?sheet=${sheetName}`;
+
+    async function loadData() {
+      const date = document.getElementById("date").value;
+      const res = await fetch(base);
+      const text = await res.text();
+      const json = JSON.parse(text.substr(47).slice(0, -2));
+
+      const table = document.getElementById("dataTable").getElementsByTagName("tbody")[0];
+      table.innerHTML = "";
+      for (const row of json.table.rows) {
+        const values = row.c.map(c => c ? c.v : "");
+        if (values[0] === date) {
+          const tr = document.createElement("tr");
+          const nom = values[1];
+          const fonction = values[2];
+          const shift = values[4];
+          const commentaire = values[5];
+
+          tr.innerHTML = `
+            <td>${nom}</td>
+            <td><input type="text" value="${fonction}" /></td>
+            <td><input type="text" value="${shift}" /></td>
+            <td><input type="text" value="${commentaire}" /></td>
+          `;
+          table.appendChild(tr);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
