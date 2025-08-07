@@ -91,21 +91,20 @@
       const text = await res.text();
       const json = JSON.parse(text.substr(47).slice(0, -2));
       const rows = json.table.rows;
-      const cols = json.table.cols;
 
-      // lire tous les labels, même si undefined
-      const header = cols.map((col, i) => col.label || `COL${i}`);
-      const fonctions = header.slice(1); // toutes sauf NOM
+      // Utiliser la première ligne comme en-tête
+      const firstRowValues = rows[0].c.map(c => (c && c.v ? c.v : ""));
+      const fonctions = firstRowValues.slice(1); // tout sauf NOM
 
       const thead = document.getElementById("ajoutEquipeHeader");
       const tbody = document.querySelector("#ajoutEquipeTable tbody");
       thead.innerHTML = "";
       tbody.innerHTML = "";
 
-      // Crée les en-têtes
-      thead.innerHTML = "<th>" + header.join("</th><th>") + "</th>";
+      thead.innerHTML = "<th>" + firstRowValues.join("</th><th>") + "</th>";
 
-      for (const row of rows) {
+      for (let r = 1; r < rows.length; r++) {
+        const row = rows[r];
         const values = row.c.map(c => (c && c.v ? c.v : ""));
         const nom = values[0];
         if (!nom) continue;
