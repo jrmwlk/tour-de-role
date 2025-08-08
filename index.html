@@ -47,6 +47,13 @@
       padding: 1em;
       margin-bottom: 1em;
     }
+    .retour-btn {
+      background-color: #333;
+      color: white;
+      padding: 0.3em 0.6em;
+      border: 1px solid #555;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -83,6 +90,8 @@
     const equipeSheet = "ÉQUIPE";
     const mainSheet = "Feuille 1";
 
+    const tourState = {};  // Pour suivre les personnes ayant cliqué sur RETOUR ABS
+
     const gvizUrl = (sheet, query = "") =>
       `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?sheet=${sheet}&tq=${encodeURIComponent(query)}`;
 
@@ -92,16 +101,14 @@
       const json = JSON.parse(text.substr(47).slice(0, -2));
       const rows = json.table.rows;
 
-      // Utiliser la première ligne comme en-tête
       const firstRowValues = rows[0].c.map(c => (c && c.v ? c.v : ""));
-      const fonctions = firstRowValues.slice(1); // tout sauf NOM
-
+      const fonctions = firstRowValues.slice(1);
       const thead = document.getElementById("ajoutEquipeHeader");
       const tbody = document.querySelector("#ajoutEquipeTable tbody");
       thead.innerHTML = "";
       tbody.innerHTML = "";
 
-      thead.innerHTML = "<th>" + firstRowValues.join("</th><th>") + "</th>";
+      thead.innerHTML = "<th>" + firstRowValues.join("</th><th>") + "</th><th>RETOUR ABS</th>";
 
       for (let r = 1; r < rows.length; r++) {
         const row = rows[r];
@@ -110,19 +117,31 @@
         if (!nom) continue;
 
         const tr = document.createElement("tr");
+        tr.setAttribute("data-nom", nom);
         tr.innerHTML = `<td>${nom}</td>`;
 
         fonctions.forEach((fonction, i) => {
           const id = `${nom}_${fonction}`.replace(/\s+/g, "_");
           const isActive = values[i + 1] ? true : false;
           const cell = isActive
-            ? `<input type='radio' name='fonction_${nom}' value='${fonction}' id='${id}' />`
+            ? `<input type='radio' name='fonction_${nom}' value='${fonction}' /> <br/><input type='number' min='1' style='width:50px' placeholder='Tour' name='tour_${nom}_${fonction}' />`
             : "";
           tr.innerHTML += `<td>${cell}</td>`;
         });
 
+        tr.innerHTML += `<td><button class='retour-btn' onclick='retourAbs("${nom}", ${JSON.stringify(fonctions)})'>RETOUR ABS</button></td>`;
+
         tbody.appendChild(tr);
       }
+    }
+
+    function retourAbs(nom, fonctions) {
+      console.log(`RETOUR ABS pour ${nom}`);
+      tourState[nom] = tourState[nom] || {};
+      fonctions.forEach(f => {
+        tourState[nom][f] = 'last';
+      });
+      alert(`${nom} passe dernier pour toutes ses fonctions disponibles.`);
     }
 
     async function loadData() {
@@ -154,7 +173,7 @@
     }
 
     function validerJournee() {
-      alert("⚠️ L'enregistrement n'est pas encore activé. Prévu via Google Apps Script ou API sécurisée.");
+      alert("⚠️ Enregistrement pas encore activé. Prévu avec Apps Script ou API sécurisée.");
     }
 
     getEquipe();
