@@ -1,182 +1,453 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tour de Rôle</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DockNet · Tour de rôle</title>
   <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
     body {
-      font-family: sans-serif;
-      background: #121212;
-      color: white;
-      margin: 0;
-      padding: 1em;
+      margin: 0; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: #0b111b; color: #e6eefc;
     }
     header {
-      text-align: center;
-      font-size: 1.5em;
-      margin-bottom: 1em;
+      position: sticky; top: 0; z-index: 40;
+      background: linear-gradient(180deg, #0e1626 0%, #0b111b 100%);
+      border-bottom: 1px solid #22304a;
+      padding: 12px 16px;
+      display: grid; gap: 8px;
     }
-    input, select, button {
-      font-size: 1em;
-      padding: 0.5em;
-      margin: 0.25em;
-      border-radius: 5px;
-      border: none;
+    .brand { font-weight: 800; letter-spacing: 1.2px; font-size: 18px; }
+    .datebar {
+      display: grid; grid-template-columns: 40px 1fr 40px; gap: 8px; align-items: center;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1em;
+    button, select, input[type="date"] {
+      background: #111a2b; color: #e6eefc;
+      border: 1px solid #22304a; border-radius: 12px; padding: 10px;
     }
-    th, td {
-      padding: 0.5em;
-      border: 1px solid #444;
-      text-align: center;
-    }
-    th {
-      background-color: #222;
-    }
-    tr:nth-child(even) {
-      background-color: #1c1c1c;
-    }
+    button { cursor: pointer; }
+    button:hover { border-color: #3a527a; }
+    main { padding: 14px; display: grid; gap: 16px; }
+    section { display: grid; gap: 10px; }
+    .title { font-size: 12px; letter-spacing: 1.4px; font-weight: 800; color: #9fb4dc; opacity: 0.9; }
+    .grid-2 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
     .card {
-      background: #1c1c1c;
-      border-radius: 10px;
-      padding: 1em;
-      margin-bottom: 1em;
+      background: #0f1727; border: 1px solid #22304a; border-radius: 16px; padding: 12px;
+      display: grid; gap: 10px;
     }
-    .retour-btn {
-      background-color: #333;
-      color: white;
-      padding: 0.3em 0.6em;
-      border: 1px solid #555;
-      cursor: pointer;
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #22304a; }
+    th { text-align: left; font-size: 12px; color: #9fb4dc; letter-spacing: 0.5px; }
+    .inline { display: flex; gap: 8px; align-items: center; }
+    .badge { font-size: 11px; padding: 4px 8px; border-radius: 999px; border: 1px solid #22304a; background: #141e32; }
+    .queue { display: flex; flex-wrap: wrap; gap: 6px; }
+    .queue .pill {
+      border: 1px solid #22304a; background: #121a2a; border-radius: 999px; padding: 6px 10px; font-size: 12px;
     }
+    .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+    .grow { flex: 1; }
+    .danger { background: #2a1313; border-color: #5a1f1f; }
+    .success { background: #132a1a; border-color: #1f5a37; }
+    .muted { opacity: 0.8; font-size: 12px; }
+    .note { font-size: 12px; color: #9fb4dc; }
+    .hidden { display: none; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
   </style>
+  <!--
+  ====================================================================
+  DockNet · index.html (tour de rôle manuel)
+  --------------------------------------------------------------------
+  Ce fichier unique permet :
+   - Saisir les affectations du jour (CM, HC, STR, CPO, SPE)
+   - Appliquer les règles de rotation :
+       * 1 fonction max / personne / jour
+       * STR/CPO couplés : si affecté à l’un → passe dernier dans les 2 files
+       * autre fonction : passe dernier dans sa file
+   - Bouton RETOUR ABS par personne (pousse en dernier dans toutes ses files possibles)
+   - Enregistrer : prépare l’historique + met à jour les files
+     (envoi prévu vers Apps Script côté serveur)
+
+  🔐 Recommandé : Google Apps Script comme “pont” sécurisé vers Google Sheets
+  Déployez ce Apps Script en tant que Web App, et remplacez API_URL ci-dessous.
+
+  // ---- Exemple Code.gs (à mettre dans votre projet Apps Script) ----
+  function doPost(e) {
+    const body = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.openById(body.sheetId); // OU openByUrl / openById
+    const hist = ss.getSheetByName('Historique') || ss.insertSheet('Historique');
+    const queues = ss.getSheetByName('Queues') || ss.insertSheet('Queues');
+
+    // Assure l’en-tête Historique
+    if (hist.getLastRow() === 0) {
+      hist.appendRow(['Date','Nom','Fonction','Tour','Source']);
+    }
+
+    // Append historique
+    const rows = body.historiqueRows || [];
+    if (rows.length) {
+      hist.getRange(hist.getLastRow()+1, 1, rows.length, rows[0].length).setValues(rows);
+    }
+
+    // Écrit les queues (écrasement simple)
+    const fnList = ['CM','HC','STR','CPO','SPE'];
+    const out = [['Fonction','File (noms séparés par des virgules)']];
+    fnList.forEach(fn => {
+      const line = [fn, (body.queues && body.queues[fn] ? body.queues[fn].join(', ') : '')];
+      out.push(line);
+    });
+    queues.clear();
+    queues.getRange(1,1,out.length,out[0].length).setValues(out);
+
+    return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+  }
+  // ------------------------------------------------------------------
+
+  Remplacez ensuite `const API_URL = "..."` ci-dessous par l’URL de la Web App.
+  ====================================================================
+  -->
 </head>
 <body>
-  <header>📋 Tour de Rôle</header>
+  <header>
+    <div class="brand">DOCKNET — TOUR DE RÔLE</div>
+    <div class="datebar">
+      <button id="prevDay" aria-label="Jour précédent">←</button>
+      <div class="row">
+        <input type="date" id="dateInput" class="grow" />
+        <button id="todayBtn">Aujourd’hui</button>
+      </div>
+      <button id="nextDay" aria-label="Jour suivant">→</button>
+    </div>
+  </header>
 
-  <section class="card">
-    <h3>🆕 Ajouter Journée</h3>
-    <label for="ajoutDate">Date : </label>
-    <input type="date" id="ajoutDate" />
-    <div id="ajoutEquipeContainer">
-      <table id="ajoutEquipeTable">
-        <thead><tr id="ajoutEquipeHeader"></tr></thead>
+  <main>
+    <section class="card">
+      <div class="title">AFFECTATIONS DU JOUR</div>
+      <div class="grid-2">
+        <div>
+          <div class="row">
+            <label class="grow">CM</label>
+            <select id="sel-CM"></select>
+          </div>
+          <div class="row">
+            <label class="grow">HC</label>
+            <select id="sel-HC"></select>
+          </div>
+          <div class="row">
+            <label class="grow">STR</label>
+            <select id="sel-STR"></select>
+          </div>
+          <div class="row">
+            <label class="grow">CPO</label>
+            <select id="sel-CPO"></select>
+          </div>
+          <div class="row">
+            <label class="grow">SPE</label>
+            <select id="sel-SPE"></select>
+          </div>
+        </div>
+        <div>
+          <div class="note">
+            Règles :
+            <ul>
+              <li>1 fonction max par personne et par jour.</li>
+              <li>STR/CPO couplés : si attribué à l’un → dernier dans les 2 files.</li>
+              <li>Autres fonctions : dernier dans sa file.</li>
+            </ul>
+          </div>
+          <div class="inline">
+            <button id="saveBtn" class="success grow">Enregistrer dans l’historique & mettre à jour les tours</button>
+          </div>
+          <div id="saveMsg" class="muted"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="title">ÉQUIPE & RETOUR ABS</div>
+      <table id="teamTable">
+        <thead>
+          <tr><th>Nom</th><th>Fonctions</th><th style="width:1%">Action</th></tr>
+        </thead>
         <tbody></tbody>
       </table>
-    </div>
-    <button onclick="validerJournee()">✅ Valider</button>
-  </section>
+      <div class="inline">
+        <button id="importQueuesBtn">Importer files (JSON)</button>
+        <button id="exportQueuesBtn">Exporter files (JSON)</button>
+        <button id="resetQueuesBtn" class="danger">Réinitialiser files</button>
+      </div>
+      <textarea id="jsonArea" class="mono hidden" rows="6"></textarea>
+      <div class="muted">Astuce : les files sont aussi mémorisées dans ce navigateur (localStorage).</div>
+    </section>
 
-  <section class="card">
-    <h3>📅 Consulter Planning</h3>
-    <label for="date">Date : </label>
-    <input type="date" id="date" />
-    <button onclick="loadData()">🔄 Charger</button>
-    <table id="dataTable">
-      <thead>
-        <tr><th>Nom</th><th>Fonction</th><th>Shift</th><th>Commentaire</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </section>
+    <section class="card">
+      <div class="title">FILES ACTUELLES</div>
+      <div id="queuesView" class="grid-2"></div>
+    </section>
+  </main>
 
   <script>
-    const sheetId = "1tQDNxbChISOOeSH9vdom5vV8bBtID1jv3vXuwqKiY_A";
-    const equipeSheet = "ÉQUIPE";
-    const mainSheet = "Feuille 1";
+    // === CONFIG ===
+    // Remplacez par l’URL de votre Apps Script Web App si vous voulez enregistrer dans Google Sheets.
+    const API_URL = ""; // ex: "https://script.google.com/macros/s/XXX/exec"
+    // Identifiant de la feuille (si vous utilisez openById côté Apps Script)
+    const SHEET_ID = ""; // ex: "1AbCDEF..."
 
-    const tourState = {};  // Pour suivre les personnes ayant cliqué sur RETOUR ABS
+    // Équipe : ajustez selon votre équipe (noms & fonctions possibles)
+    const TEAM = [
+      // Exemple :
+      { name: "GUIRAMAND JÉRÔME", roles: ["STR","SPE","CPO","HC"], active: true },
+      { name: "MALATRAIT JULIEN", roles: ["STR","SPE","CPO","HC"], active: true },
+      { name: "SIMITSIDIS YOHAN", roles: ["STR","HC"], active: true },
+      { name: "DELATTRE ROMAIN", roles: ["STR","HC"], active: true },
+      { name: "NOVELLI FLORIAN", roles: ["STR","HC"], active: true },
+      { name: "LOZANO THOMAS", roles: ["STR","HC"], active: true },
+      { name: "DELATTRE QUENTIN", roles: ["STR","HC"], active: true },
+      { name: "GATTO BAPTISTE", roles: ["STR","HC"], active: true },
+      { name: "DEJAMEAU THÉO", roles: ["STR","HC"], active: true },
+      { name: "LOZANO PAUL", roles: ["STR","HC"], active: true },
+      { name: "SCHITZ GUILLAUME", roles: ["CM"], active: true },
+      { name: "SERRES MAX", roles: [], active: true },
+    ];
 
-    const gvizUrl = (sheet, query = "") =>
-      `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?sheet=${sheet}&tq=${encodeURIComponent(query)}`;
+    const FUNCTIONS = ["CM","HC","STR","CPO","SPE"];
+    const DEFAULT_ORDER = ["CM","HC","STR","CPO","SPE"];
 
-    async function getEquipe() {
-      const res = await fetch(gvizUrl(equipeSheet));
-      const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
-      const rows = json.table.rows;
+    // Local state
+    let queues = loadQueues() || initQueuesFromTeam();
+    let selected = { CM:null, HC:null, STR:null, CPO:null, SPE:null };
 
-      const firstRowValues = rows[0].c.map(c => (c && c.v ? c.v : ""));
-      const fonctions = firstRowValues.slice(1);
-      const thead = document.getElementById("ajoutEquipeHeader");
-      const tbody = document.querySelector("#ajoutEquipeTable tbody");
-      thead.innerHTML = "";
-      tbody.innerHTML = "";
-
-      thead.innerHTML = "<th>" + firstRowValues.join("</th><th>") + "</th><th>RETOUR ABS</th>";
-
-      for (let r = 1; r < rows.length; r++) {
-        const row = rows[r];
-        const values = row.c.map(c => (c && c.v ? c.v : ""));
-        const nom = values[0];
-        if (!nom) continue;
-
-        const tr = document.createElement("tr");
-        tr.setAttribute("data-nom", nom);
-        tr.innerHTML = `<td>${nom}</td>`;
-
-        fonctions.forEach((fonction, i) => {
-          const id = `${nom}_${fonction}`.replace(/\s+/g, "_");
-          const isActive = values[i + 1] ? true : false;
-          const cell = isActive
-            ? `<input type='radio' name='fonction_${nom}' value='${fonction}' /> <br/><input type='number' min='1' style='width:50px' placeholder='Tour' name='tour_${nom}_${fonction}' />`
-            : "";
-          tr.innerHTML += `<td>${cell}</td>`;
+    // --- Helpers ---
+    function formatDateISO(d){ return d.toISOString().slice(0,10); }
+    function today(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
+    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+    function uniq(arr){ return Array.from(new Set(arr)); }
+    function canDo(name, fn){
+      const person = TEAM.find(t => t.name === name && t.active !== false);
+      return !!(person && person.roles.includes(fn));
+    }
+    function allEligible(fn){
+      return TEAM.filter(t => t.active !== false && t.roles.includes(fn)).map(t => t.name);
+    }
+    function loadQueues(){
+      try{ return JSON.parse(localStorage.getItem("docknet_queues")||"null"); }catch(e){ return null; }
+    }
+    function saveQueues(){
+      localStorage.setItem("docknet_queues", JSON.stringify(queues));
+      renderQueues();
+    }
+    function initQueuesFromTeam(){
+      const q = {};
+      for (const fn of FUNCTIONS){
+        q[fn] = allEligible(fn).sort((a,b)=>a.localeCompare(b,'fr'));
+      }
+      return q;
+    }
+    function rotate(arr, name){
+      const out = arr.filter(x => x!==name);
+      if (arr.includes(name)) out.push(name);
+      return out;
+    }
+    function renderQueues(){
+      const wrap = document.getElementById("queuesView");
+      wrap.innerHTML = "";
+      for (const fn of FUNCTIONS){
+        const box = document.createElement("div");
+        box.className = "card";
+        const title = document.createElement("div");
+        title.className = "inline";
+        title.innerHTML = `<strong>${fn}</strong> <span class="muted">(${queues[fn]?.length||0})</span>`;
+        const line = document.createElement("div");
+        line.className = "queue";
+        (queues[fn]||[]).forEach(n => {
+          const pill = document.createElement("div");
+          pill.className = "pill";
+          pill.textContent = n;
+          line.appendChild(pill);
         });
-
-        tr.innerHTML += `<td><button class='retour-btn' onclick='retourAbs("${nom}", ${JSON.stringify(fonctions)})'>RETOUR ABS</button></td>`;
-
+        box.appendChild(title); box.appendChild(line);
+        wrap.appendChild(box);
+      }
+    }
+    function renderTeam(){
+      const tbody = document.querySelector("#teamTable tbody");
+      tbody.innerHTML = "";
+      TEAM.forEach(p => {
+        const tr = document.createElement("tr");
+        const fns = p.roles.length ? p.roles.join(", ") : "—";
+        tr.innerHTML = `
+          <td>${p.name}</td>
+          <td><span class="badge">${fns}</span></td>
+          <td>
+            <div class="inline">
+              <button class="retourBtn" data-name="${p.name}" title="RETOUR ABS — place en dernier dans toutes ses files">RETOUR ABS</button>
+            </div>
+          </td>`;
         tbody.appendChild(tr);
+      });
+      // bind retour
+      document.querySelectorAll(".retourBtn").forEach(btn => {
+        btn.addEventListener("click", (e)=>{
+          const name = e.currentTarget.dataset.name;
+          // pousser en dernier dans toutes ses files autorisées
+          const person = TEAM.find(t => t.name===name);
+          if (!person) return;
+          for (const fn of person.roles){
+            queues[fn] = rotate(queues[fn]||[], name);
+          }
+          saveQueues();
+        });
+      });
+    }
+    function renderSelectors(){
+      const used = new Set(Object.values(selected).filter(Boolean));
+      for (const fn of FUNCTIONS){
+        const sel = document.getElementById(`sel-${fn}`);
+        const eligible = queues[fn]?.filter(n => canDo(n, fn)) || allEligible(fn);
+        sel.innerHTML = `<option value="">—</option>` + eligible.map(n => {
+          const dis = used.has(n) && selected[fn]!==n ? "disabled" : "";
+          return `<option ${dis} value="${n}" ${selected[fn]===n?"selected":""}>${n}</option>`;
+        }).join("");
+        sel.onchange = () => {
+          selected[fn] = sel.value || null;
+          renderSelectors(); // rafraîchit les disabled
+        };
       }
     }
 
-    function retourAbs(nom, fonctions) {
-      console.log(`RETOUR ABS pour ${nom}`);
-      tourState[nom] = tourState[nom] || {};
-      fonctions.forEach(f => {
-        tourState[nom][f] = 'last';
-      });
-      alert(`${nom} passe dernier pour toutes ses fonctions disponibles.`);
-    }
+    // --- Save (apply rules + send to Apps Script) ---
+    async function onSave(){
+      const date = document.getElementById("dateInput").value;
+      if (!date){ return showMsg("Choisis une date", true); }
 
-    async function loadData() {
-      const date = document.getElementById("date").value;
-      const res = await fetch(gvizUrl(mainSheet));
-      const text = await res.text();
-      const json = JSON.parse(text.substr(47).slice(0, -2));
+      // Build assignments in order
+      const order = DEFAULT_ORDER;
+      const dayAssignments = [];
+      const taken = new Set();
+      for (const fn of order){
+        const name = selected[fn];
+        if (!name) continue;
+        if (taken.has(name)) { showMsg(`Conflit: ${name} déjà affecté today`, true); return; }
+        dayAssignments.push([fn, name]);
+        taken.add(name);
+      }
 
-      const table = document.getElementById("dataTable").getElementsByTagName("tbody")[0];
-      table.innerHTML = "";
-      for (const row of json.table.rows) {
-        const values = row.c.map(c => c ? c.v : "");
-        if (values[0] === date) {
-          const tr = document.createElement("tr");
-          const nom = values[1];
-          const fonction = values[2];
-          const shift = values[4];
-          const commentaire = values[5];
-
-          tr.innerHTML = `
-            <td>${nom}</td>
-            <td><input type="text" value="${fonction}" /></td>
-            <td><input type="text" value="${shift}" /></td>
-            <td><input type="text" value="${commentaire}" /></td>
-          `;
-          table.appendChild(tr);
+      // Prepare historique rows and rotate queues accordingly
+      // tour index = rang du jour pour cette fonction = 1 si on fait 1 par fn/jour
+      const historiqueRows = [];
+      for (const [fn, name] of dayAssignments){
+        const tourIdx = 1; // on enregistre une seule ligne par fonction / jour ici
+        historiqueRows.push([date, name, fn, String(tourIdx), "manuel"]);
+        if (fn === "STR" || fn === "CPO"){
+          queues["STR"] = rotate(queues["STR"]||[], name);
+          queues["CPO"] = rotate(queues["CPO"]||[], name);
+        } else {
+          queues[fn] = rotate(queues[fn]||[], name);
         }
       }
+      saveQueues();
+
+      // Try to POST to Apps Script if configured
+      if (API_URL){
+        try {
+          const res = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sheetId: SHEET_ID,
+              date,
+              assignments: dayAssignments,   // [["CM","NOM"], ["HC","NOM"], ...]
+              historiqueRows,               // [[Date, Nom, Fonction, Tour, Source], ...]
+              queues                        // {CM:[], HC:[], ...}
+            })
+          });
+          const data = await res.json().catch(()=>({}));
+          if (res.ok && data && (data.ok===true || data.status==="ok")){
+            showMsg("✅ Enregistré dans l’historique et files mises à jour.");
+          } else {
+            showMsg("Enregistré localement. Erreur Apps Script (voir console).", true);
+            console.warn("Apps Script response:", res.status, data);
+          }
+        } catch (err){
+          showMsg("Enregistré localement. Impossible d’appeler Apps Script (voir console).", true);
+          console.error(err);
+        }
+      } else {
+        showMsg("Enregistré localement. Configure API_URL pour écrire dans Google Sheets.", true);
+      }
+
+      // Reset selections for the next day (optional)
+      selected = { CM:null, HC:null, STR:null, CPO:null, SPE:null };
+      renderSelectors();
     }
 
-    function validerJournee() {
-      alert("⚠️ Enregistrement pas encore activé. Prévu avec Apps Script ou API sécurisée.");
+    function showMsg(text, warn=false){
+      const el = document.getElementById("saveMsg");
+      el.textContent = text;
+      el.style.color = warn ? "#ffb4b4" : "#a7f3d0";
     }
 
-    getEquipe();
+    // --- Import / Export ---
+    document.getElementById("exportQueuesBtn")?.addEventListener("click", ()=>{
+      const ta = document.getElementById("jsonArea");
+      ta.classList.remove("hidden");
+      ta.value = JSON.stringify(queues, null, 2);
+      ta.focus();
+      showMsg("Files exportées ci-dessous (JSON).");
+    });
+    document.getElementById("importQueuesBtn")?.addEventListener("click", ()=>{
+      const ta = document.getElementById("jsonArea");
+      ta.classList.remove("hidden");
+      ta.placeholder = "Collez ici le JSON des files puis cliquez encore sur Importer pour valider.";
+      if (ta.value.trim()){
+        try {
+          const obj = JSON.parse(ta.value.trim());
+          if (obj && typeof obj === "object"){
+            queues = {};
+            for (const fn of FUNCTIONS){
+              queues[fn] = Array.isArray(obj[fn]) ? uniq(obj[fn].filter(n=>typeof n==="string")) : [];
+            }
+            saveQueues();
+            showMsg("Files importées.");
+          } else {
+            showMsg("JSON invalide.", true);
+          }
+        } catch (e){
+          showMsg("JSON invalide.", true);
+        }
+      } else {
+        ta.value = JSON.stringify(queues, null, 2);
+      }
+    });
+    document.getElementById("resetQueuesBtn")?.addEventListener("click", ()=>{
+      if (!confirm("Réinitialiser les files depuis l’équipe (ordre alphabétique) ?")) return;
+      queues = initQueuesFromTeam();
+      saveQueues();
+      showMsg("Files réinitialisées.");
+    });
+
+    // --- Date UX ---
+    (function initDate(){
+      const input = document.getElementById("dateInput");
+      const d = today();
+      input.value = formatDateISO(d);
+      document.getElementById("todayBtn").onclick = ()=>{ input.value = formatDateISO(today()); };
+      document.getElementById("prevDay").onclick = ()=>{
+        const cur = new Date(input.value); input.value = formatDateISO(addDays(cur, -1));
+      };
+      document.getElementById("nextDay").onclick = ()=>{
+        const cur = new Date(input.value); input.value = formatDateISO(addDays(cur, +1));
+      };
+    })();
+
+    // --- Init UI ---
+    renderTeam();
+    renderQueues();
+    renderSelectors();
+
+    // Bind save
+    document.getElementById("saveBtn").addEventListener("click", onSave);
   </script>
 </body>
 </html>
