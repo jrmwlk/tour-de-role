@@ -1,425 +1,340 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DockNet · Tour de rôle</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DockNet — Tour de rôle (tout‑en‑un)</title>
   <style>
     :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      background: #0b111b; color: #e6eefc;
-    }
-    header {
-      position: sticky; top: 0; z-index: 40;
-      background: linear-gradient(180deg, #0e1626 0%, #0b111b 100%);
-      border-bottom: 1px solid #22304a;
-      padding: 12px 16px;
-      display: grid; gap: 8px;
-    }
-    .brand { font-weight: 800; letter-spacing: 1.2px; font-size: 18px; }
-    .datebar {
-      display: grid; grid-template-columns: 40px 1fr 40px; gap: 8px; align-items: center;
-    }
-    button, select, input[type="date"] {
-      background: #111a2b; color: #e6eefc;
-      border: 1px solid #22304a; border-radius: 12px; padding: 10px;
-    }
-    button { cursor: pointer; }
-    button:hover { border-color: #3a527a; }
-    main { padding: 14px; display: grid; gap: 16px; }
-    section { display: grid; gap: 10px; }
-    .title { font-size: 12px; letter-spacing: 1.4px; font-weight: 800; color: #9fb4dc; opacity: 0.9; }
-    .grid-2 { display: grid; grid-template-columns: 1fr; gap: 10px; }
-    @media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
-    .card {
-      background: #0f1727; border: 1px solid #22304a; border-radius: 16px; padding: 12px;
-      display: grid; gap: 10px;
-    }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 8px 10px; border-bottom: 1px solid #22304a; }
-    th { text-align: left; font-size: 12px; color: #9fb4dc; letter-spacing: 0.5px; }
-    .inline { display: flex; gap: 8px; align-items: center; }
-    .badge { font-size: 11px; padding: 4px 8px; border-radius: 999px; border: 1px solid #22304a; background: #141e32; }
-    .queue { display: flex; flex-wrap: wrap; gap: 6px; }
-    .queue .pill {
-      border: 1px solid #22304a; background: #121a2a; border-radius: 999px; padding: 6px 10px; font-size: 12px;
-    }
-    .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
-    .grow { flex: 1; }
-    .danger { background: #2a1313; border-color: #5a1f1f; }
-    .success { background: #132a1a; border-color: #1f5a37; }
-    .muted { opacity: 0.8; font-size: 12px; }
-    .note { font-size: 12px; color: #9fb4dc; }
-    .hidden { display: none; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    body{margin:0;font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#0b111b;color:#e6eefc}
+    header{position:sticky;top:0;background:linear-gradient(180deg,#0e1626 0%,#0b111b 100%);border-bottom:1px solid #22304a;padding:12px 16px;display:grid;gap:8px}
+    .brand{font-weight:800;letter-spacing:1.1px}
+    .row{display:flex;gap:8px;align-items:center}
+    button,select,input[type="date"]{background:#111a2b;color:#e6eefc;border:1px solid #22304a;border-radius:12px;padding:10px;cursor:pointer}
+    button:hover{border-color:#3a527a}
+    main{padding:14px;display:grid;gap:16px}
+    .card{background:#0f1727;border:1px solid #22304a;border-radius:16px;padding:12px;display:grid;gap:10px}
+    .title{font-size:12px;letter-spacing:1.4px;font-weight:800;color:#9fb4dc;opacity:.9}
+    .grid-2{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:900px){.grid-2{grid-template-columns:1fr 1fr}}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px 10px;border-bottom:1px solid #22304a}
+    th{text-align:left;font-size:12px;color:#9fb4dc;letter-spacing:.5px}
+    .queue{display:flex;flex-wrap:wrap;gap:6px}
+    .pill{border:1px solid #22304a;background:#121a2a;border-radius:999px;padding:6px 10px;font-size:12px}
+    .muted{opacity:.85;font-size:12px}
+    .good{color:#a7f3d0} .warn{color:#ffb4b4}
   </style>
+  <script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body>
-  <header>
+<header>
+  <div class="row" style="justify-content:space-between">
     <div class="brand">DOCKNET — TOUR DE RÔLE</div>
-    <div class="datebar">
-      <button id="prevDay" aria-label="Jour précédent">←</button>
-      <div class="row">
-        <input type="date" id="dateInput" class="grow" />
-        <button id="todayBtn">Aujourd’hui</button>
-      </div>
-      <button id="nextDay" aria-label="Jour suivant">→</button>
+    <div class="row">
+      <button id="btnSignIn">Connexion Google</button>
+      <button id="btnSignOut" style="display:none">Déconnexion</button>
     </div>
-  </header>
+  </div>
+  <div class="row">
+    <input type="date" id="dateInput"/>
+    <button id="btnToday">Aujourd’hui</button>
+  </div>
+</header>
 
-  <main>
-    <section class="card">
-      <div class="title">AFFECTATIONS DU JOUR</div>
-      <div class="grid-2">
-        <div>
-          <div class="row"><label class="grow">CM</label><select id="sel-CM"></select></div>
-          <div class="row"><label class="grow">HC</label><select id="sel-HC"></select></div>
-          <div class="row"><label class="grow">STR</label><select id="sel-STR"></select></div>
-          <div class="row"><label class="grow">CPO</label><select id="sel-CPO"></select></div>
-          <div class="row"><label class="grow">SPE</label><select id="sel-SPE"></select></div>
-        </div>
-        <div>
-          <div class="note">
-            Règles :
-            <ul>
-              <li>1 fonction max par personne et par jour.</li>
-              <li>STR/CPO couplés : si attribué à l’un → dernier dans les 2 files.</li>
-              <li>Autres fonctions : dernier dans sa file.</li>
-            </ul>
-          </div>
-          <div class="inline">
-            <button id="saveBtn" class="success grow">Enregistrer dans l’historique & mettre à jour les tours</button>
-          </div>
-          <div id="saveMsg" class="muted"></div>
-        </div>
+<main>
+  <section class="card">
+    <div class="title">AFFECTATIONS DU JOUR</div>
+    <div class="grid-2">
+      <div>
+        <div class="row"><label style="width:60px">CM</label><select id="sel-CM"></select></div>
+        <div class="row"><label style="width:60px">HC</label><select id="sel-HC"></select></div>
+        <div class="row"><label style="width:60px">STR</label><select id="sel-STR"></select></div>
+        <div class="row"><label style="width:60px">CPO</label><select id="sel-CPO"></select></div>
+        <div class="row"><label style="width:60px">SPE</label><select id="sel-SPE"></select></div>
       </div>
-    </section>
-
-    <section class="card">
-      <div class="title">ÉQUIPE & RETOUR ABS</div>
-      <table id="teamTable">
-        <thead><tr><th>Nom</th><th>Fonctions</th><th style="width:1%">Action</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="inline">
-        <button id="importQueuesBtn">Importer files (JSON)</button>
-        <button id="exportQueuesBtn">Exporter files (JSON)</button>
-        <button id="resetQueuesBtn" class="danger">Réinitialiser files</button>
+      <div>
+        <div class="muted">Règles : 1 fonction max / personne / jour. STR et CPO sont liés (si tu prends l’un, tu vas en dernier dans les 2 files). Les autres → dernier dans leur file.</div>
+        <div class="row"><button id="btnSave" style="flex:1">Enregistrer (Historique + Files)</button></div>
+        <div id="msg" class="muted"></div>
       </div>
-      <textarea id="jsonArea" class="mono hidden" rows="6"></textarea>
-      <div class="muted">Astuce : les files sont mémorisées dans ce navigateur (localStorage).</div>
-    </section>
+    </div>
+  </section>
 
-    <section class="card">
-      <div class="title">FILES ACTUELLES</div>
-      <div id="queuesView" class="grid-2"></div>
-    </section>
-  </main>
+  <section class="card">
+    <div class="title">ÉQUIPE & RETOUR ABS</div>
+    <table>
+      <thead><tr><th>Nom</th><th>Fonctions</th><th style="width:1%">Action</th></tr></thead>
+      <tbody id="teamBody"></tbody>
+    </table>
+  </section>
 
-  <script>
-    // === CONFIG ===
-    const API_URL = ""; // ex: "https://script.google.com/macros/s/XXX/exec"
-    const SHEET_ID = "1tQDNxbChlSOeSH9vdom5Vv8Btb1Djv3vXuwqKiY_A"; // détecté depuis ta capture
-    const TEAM_TAB_NAME = "ÉQUIPE"; // avec accent
+  <section class="card">
+    <div class="title">FILES ACTUELLES</div>
+    <div id="queuesView" class="grid-2"></div>
+  </section>
+</main>
 
-    const FUNCTIONS = ["CM","HC","STR","CPO","SPE"];
-    const DEFAULT_ORDER = ["CM","HC","STR","CPO","SPE"];
+<script>
+// ======= CONFIG À REMPLIR (tu peux laisser la clé dans ce fichier si tu veux) =======
+const SPREADSHEET_ID = "1tQDNxbChlSOeSH9vdom5Vv8Btb1Djv3vXuwqKiY_A"; // ta feuille
+const TEAM_RANGE = "ÉQUIPE!A:E";   // NOM | CM | STR | CPO | SPE
+const API_KEY = "PASTE_YOUR_API_KEY_HERE";
+const CLIENT_ID = "PASTE_YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com";
+const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 
-    let TEAM = []; // chargé dynamiquement depuis la Sheet
-    let queues = loadQueues() || {}; // initialisées après loadTeam
-    let selected = { CM:null, HC:null, STR:null, CPO:null, SPE:null };
+// ======= ÉTAT LOCAL =======
+const FUNCTIONS = ["CM","HC","STR","CPO","SPE"];
+let TEAM = []; // {name, roles[], active}
+let queues = loadQueues() || {}; // {fn:[names...]}
+let selected = {CM:null,HC:null,STR:null,CPO:null,SPE:null};
 
-    // Helpers
-    function formatDateISO(d){ return d.toISOString().slice(0,10); }
-    function today(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
-    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
-    function uniq(arr){ return Array.from(new Set(arr)); }
-    function canDo(name, fn){
-      const person = TEAM.find(t => t.name === name && t.active !== false);
-      return !!(person && person.roles.includes(fn));
-    }
-    function allEligible(fn){
-      return TEAM.filter(t => t.active !== false && t.roles.includes(fn)).map(t => t.name);
-    }
-    function loadQueues(){
-      try{ return JSON.parse(localStorage.getItem("docknet_queues")||"null"); }catch(e){ return null; }
-    }
-    function saveQueues(){
-      localStorage.setItem("docknet_queues", JSON.stringify(queues));
-      renderQueues();
-    }
-    function initQueuesFromTeam(){
-      const q = {};
-      for (const fn of FUNCTIONS){
-        q[fn] = allEligible(fn).sort((a,b)=>a.localeCompare(b,'fr'));
-      }
-      return q;
-    }
-    function rotate(arr, name){
-      const out = arr.filter(x => x!==name);
-      if (arr.includes(name)) out.push(name);
-      return out;
-    }
+// ======= INIT GOOGLE API =======
+function initClient(){
+  gapi.client.init({
+    apiKey: API_KEY,
+    clientId: CLIENT_ID,
+    discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+    scope: SCOPES
+  }).then(()=>{
+    const auth = gapi.auth2.getAuthInstance();
+    auth.isSignedIn.listen(updateSigninStatus);
+    updateSigninStatus(auth.isSignedIn.get());
+    document.getElementById('btnSignIn').onclick=()=>auth.signIn();
+    document.getElementById('btnSignOut').onclick=()=>auth.signOut();
+  }).catch(err=>show("Init API error", true, err));
+}
+gapi.load("client:auth2", initClient);
 
-    // Rendering
-    function renderQueues(){
-      const wrap = document.getElementById("queuesView");
-      wrap.innerHTML = "";
-      for (const fn of FUNCTIONS){
-        const box = document.createElement("div");
-        box.className = "card";
-        const title = document.createElement("div");
-        title.className = "inline";
-        title.innerHTML = `<strong>${fn}</strong> <span class="muted">(${queues[fn]?.length||0})</span>`;
-        const line = document.createElement("div");
-        line.className = "queue";
-        (queues[fn]||[]).forEach(n => {
-          const pill = document.createElement("div");
-          pill.className = "pill";
-          pill.textContent = n;
-          line.appendChild(pill);
-        });
-        box.appendChild(title); box.appendChild(line);
-        wrap.appendChild(box);
-      }
-    }
-    function renderTeam(){
-      const tbody = document.querySelector("#teamTable tbody");
-      tbody.innerHTML = "";
-      TEAM.forEach(p => {
-        const tr = document.createElement("tr");
-        const fns = p.roles.length ? p.roles.join(", ") : "—";
-        tr.innerHTML = `
-          <td>${p.name}</td>
-          <td><span class="badge">${fns}</span></td>
-          <td>
-            <div class="inline">
-              <button class="retourBtn" data-name="${p.name}" title="RETOUR ABS — place en dernier dans toutes ses files">RETOUR ABS</button>
-            </div>
-          </td>`;
-        tbody.appendChild(tr);
-      });
-      document.querySelectorAll(".retourBtn").forEach(btn => {
-        btn.addEventListener("click", (e)=>{
-          const name = e.currentTarget.dataset.name;
-          const person = TEAM.find(t => t.name===name);
-          if (!person) return;
-          for (const fn of person.roles){
-            queues[fn] = rotate(queues[fn]||[], name);
-          }
-          saveQueues();
-        });
-      });
-    }
-    function renderSelectors(){
-      const used = new Set(Object.values(selected).filter(Boolean));
-      for (const fn of FUNCTIONS){
-        const sel = document.getElementById(`sel-${fn}`);
-        const eligible = (queues[fn]?.filter(n => canDo(n, fn)) || allEligible(fn));
-        sel.innerHTML = `<option value="">—</option>` + eligible.map(n => {
-          const dis = used.has(n) && selected[fn]!==n ? "disabled" : "";
-          return `<option ${dis} value="${n}" ${selected[fn]===n?"selected":""}>${n}</option>`;
-        }).join("");
-        sel.onchange = () => { selected[fn] = sel.value || null; renderSelectors(); };
-      }
-    }
+function updateSigninStatus(isSignedIn){
+  document.getElementById('btnSignIn').style.display = isSignedIn ? "none" : "";
+  document.getElementById('btnSignOut').style.display = isSignedIn ? "" : "none";
+  if (isSignedIn){ boot(); }
+}
 
-    // Load Team from Apps Script
-    async function loadTeam(){
-      if (!API_URL) {
-        TEAM = [];
-        queues = loadQueues() || {};
-        renderTeam(); renderQueues(); renderSelectors();
-        return;
-      }
-      try {
-        const url = API_URL + "?sheetId=" + encodeURIComponent(SHEET_ID) + "&teamTab=" + encodeURIComponent(TEAM_TAB_NAME);
-        const res = await fetch(url);
-        const data = await res.json();
-        TEAM = data.team || [];
-        queues = loadQueues() || initQueuesFromTeam();
-        renderTeam(); renderQueues(); renderSelectors();
-      } catch(e){
-        console.error("Erreur fetch équipe:", e);
-        TEAM = [];
-        queues = loadQueues() || {};
-        renderTeam(); renderQueues(); renderSelectors();
-      }
-    }
+// ======= BOOT =======
+async function boot(){
+  setToday();
+  try{
+    await ensureSheets(["Historique","Queues"]);
+    TEAM = await fetchTeam();
+    if (!Object.keys(queues).length) queues = initQueuesFromTeam(TEAM);
+    renderAll();
+  }catch(e){ show("Erreur boot", true, e); }
+}
 
-    // Save (apply rules + POST)
-    async function onSave(){
-      const date = document.getElementById("dateInput").value;
-      if (!date){ return showMsg("Choisis une date", true); }
-
-      const order = DEFAULT_ORDER;
-      const dayAssignments = [];
-      const taken = new Set();
-      for (const fn of order){
-        const name = selected[fn];
-        if (!name) continue;
-        if (taken.has(name)) { showMsg(\`Conflit: \${name} déjà affecté today\`, true); return; }
-        dayAssignments.push([fn, name]);
-        taken.add(name);
-      }
-
-      const historiqueRows = [];
-      for (const [fn, name] of dayAssignments){
-        const tourIdx = 1;
-        historiqueRows.push([date, name, fn, String(tourIdx), "manuel"]);
-        if (fn === "STR" || fn === "CPO"){
-          queues["STR"] = rotate(queues["STR"]||[], name);
-          queues["CPO"] = rotate(queues["CPO"]||[], name);
-        } else {
-          queues[fn] = rotate(queues[fn]||[], name);
-        }
-      }
-      saveQueues();
-
-      if (API_URL){
-        try {
-          const res = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sheetId: SHEET_ID,
-              teamTab: TEAM_TAB_NAME,
-              date,
-              assignments: dayAssignments,
-              historiqueRows,
-              queues
-            })
-          });
-          const data = await res.json().catch(()=>({}));
-          if (res.ok && (data.ok===true || data.status==="ok")){ showMsg("✅ Écrit dans la Sheet + files à jour."); }
-          else { showMsg("Local OK. Erreur Apps Script (voir console).", true); console.warn("Apps Script response:", res.status, data); }
-        } catch(err){ showMsg("Local OK. Apps Script inaccessible (voir console).", true); console.error(err); }
-      } else {
-        showMsg("Enregistré localement. Configure API_URL pour écrire dans Google Sheets.", true);
-      }
-
-      selected = { CM:null, HC:null, STR:null, CPO:null, SPE:null };
-      renderSelectors();
-    }
-
-    function showMsg(text, warn=false){
-      const el = document.getElementById("saveMsg");
-      el.textContent = text;
-      el.style.color = warn ? "#ffb4b4" : "#a7f3d0";
-    }
-
-    // Import / Export / Reset
-    document.getElementById("exportQueuesBtn")?.addEventListener("click", ()=>{
-      const ta = document.getElementById("jsonArea");
-      ta.classList.remove("hidden");
-      ta.value = JSON.stringify(queues, null, 2);
-      ta.focus();
-      showMsg("Files exportées ci-dessous (JSON).");
-    });
-    document.getElementById("importQueuesBtn")?.addEventListener("click", ()=>{
-      const ta = document.getElementById("jsonArea");
-      ta.classList.remove("hidden");
-      ta.placeholder = "Collez ici le JSON des files puis cliquez encore sur Importer pour valider.";
-      if (ta.value.trim()){
-        try {
-          const obj = JSON.parse(ta.value.trim());
-          if (obj && typeof obj === "object"){
-            queues = {};
-            for (const fn of FUNCTIONS){
-              queues[fn] = Array.isArray(obj[fn]) ? uniq(obj[fn].filter(n=>typeof n==="string")) : [];
-            }
-            saveQueues();
-            showMsg("Files importées.");
-          } else {
-            showMsg("JSON invalide.", true);
-          }
-        } catch (e){
-          showMsg("JSON invalide.", true);
-        }
-      } else {
-        ta.value = JSON.stringify(queues, null, 2);
-      }
-    });
-    document.getElementById("resetQueuesBtn")?.addEventListener("click", ()=>{
-      if (!confirm("Réinitialiser les files depuis l’équipe (ordre alphabétique) ?")) return;
-      queues = initQueuesFromTeam();
-      saveQueues();
-      showMsg("Files réinitialisées.");
-    });
-
-    // Date UX
-    (function initDate(){
-      const input = document.getElementById("dateInput");
-      const d = today();
-      input.value = formatDateISO(d);
-      document.getElementById("todayBtn").onclick = ()=>{ input.value = formatDateISO(today()); };
-      document.getElementById("prevDay").onclick = ()=>{ const cur = new Date(input.value); input.value = formatDateISO(addDays(cur, -1)); };
-      document.getElementById("nextDay").onclick = ()=>{ const cur = new Date(input.value); input.value = formatDateISO(addDays(cur, +1)); };
-    })();
-
-    // Init
-    document.getElementById("saveBtn").addEventListener("click", onSave);
-    loadTeam();
-  </script>
-
-  <!--
-  ===== Apps Script côté serveur (Code.gs) =====
-  // doGet : renvoie l'équipe depuis l'onglet TEAM_TAB_NAME (colonnes: NOM, CM, STR, CPO, SPE, valeurs "X")
-  function doGet(e) {
-    const sheetId = e.parameter.sheetId;
-    const tab = e.parameter.teamTab || "ÉQUIPE";
-    const ss = SpreadsheetApp.openById(sheetId);
-    const sh = ss.getSheetByName(tab);
-    const data = sh.getDataRange().getValues();
-    const header = data[0]; // ["NOM","CM","STR","CPO","SPE"]
-    const team = [];
-    for (let i=1; i<data.length; i++) {
-      const row = data[i];
-      if (!row[0]) continue;
-      const name = row[0].toString();
-      const roles = [];
-      for (let j=1; j<header.length; j++) {
-        const h = (header[j]||"").toString().trim().toUpperCase();
-        if (!h) continue;
-        if (row[j] && row[j].toString().trim().toUpperCase() === "X") roles.push(h);
-      }
-      team.push({ name, roles, active: true });
-    }
-    return ContentService.createTextOutput(JSON.stringify({ team }))
-      .setMimeType(ContentService.MimeType.JSON);
+// ======= HELPERS =======
+function setToday(){
+  const d = new Date(); d.setHours(0,0,0,0);
+  document.getElementById("dateInput").value = d.toISOString().slice(0,10);
+  document.getElementById("btnToday").onclick = setToday;
+}
+function show(txt, warn=false, err=null){
+  const m = document.getElementById("msg");
+  m.textContent = txt;
+  m.className = "muted " + (warn?"warn":"good");
+  if (err) console.error(err);
+}
+function uniq(a){ return Array.from(new Set(a)); }
+function canDo(person, fn){ return person.roles.includes(fn); }
+function initQueuesFromTeam(team){
+  const q={};
+  for (const fn of FUNCTIONS){
+    q[fn] = team.filter(p=>canDo(p,fn)).map(p=>p.name).sort((a,b)=>a.localeCompare(b,'fr'));
   }
+  saveQueues(q);
+  return q;
+}
+function rotate(arr,name){
+  const out = (arr||[]).filter(x=>x!==name);
+  if ((arr||[]).includes(name)) out.push(name);
+  return out;
+}
+function saveQueues(q=queues){
+  queues = q;
+  localStorage.setItem("docknet_queues", JSON.stringify(queues));
+}
+function loadQueues(){
+  try{ return JSON.parse(localStorage.getItem("docknet_queues")||"null"); }catch(e){ return null; }
+}
 
-  // doPost : écrit Historique + Queues
-  function doPost(e) {
-    const body = JSON.parse(e.postData.contents);
-    const ss = SpreadsheetApp.openById(body.sheetId);
-    const hist = ss.getSheetByName('Historique') || ss.insertSheet('Historique');
-    const queues = ss.getSheetByName('Queues') || ss.insertSheet('Queues');
-
-    if (hist.getLastRow() === 0) {
-      hist.appendRow(['Date','Nom','Fonction','Tour','Source']);
+// ======= UI RENDER =======
+function renderAll(){
+  renderTeam();
+  renderQueues();
+  renderSelectors();
+  document.getElementById("btnSave").onclick = onSave;
+}
+function renderTeam(){
+  const tb = document.getElementById("teamBody"); tb.innerHTML="";
+  TEAM.forEach(p=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${p.name}</td>
+    <td>${p.roles.join(", ")||"—"}</td>
+    <td><button data-name="${p.name}" class="btnRetour">RETOUR ABS</button></td>`;
+    tb.appendChild(tr);
+  });
+  document.querySelectorAll(".btnRetour").forEach(b=>b.onclick = e=>{
+    const name = e.currentTarget.dataset.name;
+    const person = TEAM.find(t=>t.name===name);
+    for (const fn of person.roles){
+      queues[fn] = rotate(queues[fn], name);
     }
-
-    const rows = body.historiqueRows || [];
-    if (rows.length) {
-      hist.getRange(hist.getLastRow()+1, 1, rows.length, rows[0].length).setValues(rows);
-    }
-
-    const fnList = ['CM','HC','STR','CPO','SPE'];
-    const out = [['Fonction','File (noms séparés par des virgules)']];
-    fnList.forEach(fn => {
-      const line = [fn, (body.queues && body.queues[fn] ? body.queues[fn].join(', ') : '')];
-      out.push(line);
+    saveQueues();
+    renderQueues(); renderSelectors();
+    show(`RETOUR ABS → ${name} envoyé en dernier de ses files`);
+  });
+}
+function renderQueues(){
+  const wrap = document.getElementById("queuesView");
+  wrap.innerHTML="";
+  for (const fn of FUNCTIONS){
+    const box = document.createElement("div");
+    box.className="card";
+    box.innerHTML = `<div class="title">${fn}</div><div class="queue"></div>`;
+    const q = box.querySelector(".queue");
+    (queues[fn]||[]).forEach(n=>{
+      const d = document.createElement("div"); d.className="pill"; d.textContent=n; q.appendChild(d);
     });
-    queues.clear();
-    queues.getRange(1,1,out.length,out[0].length).setValues(out);
-
-    return ContentService.createTextOutput(JSON.stringify({ok:true}))
-      .setMimeType(ContentService.MimeType.JSON);
+    wrap.appendChild(box);
   }
-  ==============================================
-  -->
+}
+function renderSelectors(){
+  const used = new Set(Object.values(selected).filter(Boolean));
+  for (const fn of FUNCTIONS){
+    const sel = document.getElementById(`sel-${fn}`);
+    const eligible = (queues[fn]||[]).filter(n=>{
+      const person = TEAM.find(p=>p.name===n);
+      return person && canDo(person, fn);
+    });
+    sel.innerHTML = `<option value="">—</option>` + eligible.map(n=>{
+      const dis = used.has(n) && selected[fn]!==n ? "disabled":"";
+      return `<option ${dis} value="${n}" ${selected[fn]===n?"selected":""}>${n}</option>`
+    }).join("");
+    sel.onchange = ()=>{ selected[fn] = sel.value || null; renderSelectors(); }
+  }
+}
+
+// ======= SHEETS OPS =======
+async function fetchTeam(){
+  const res = await gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: TEAM_RANGE
+  });
+  const vals = res.result.values || [];
+  const header = (vals[0]||[]).map(h=>h.toString().trim().toUpperCase());
+  const idxNom = header.indexOf("NOM");
+  const idxCM = header.indexOf("CM");
+  const idxSTR= header.indexOf("STR");
+  const idxCPO= header.indexOf("CPO");
+  const idxSPE= header.indexOf("SPE");
+  const out=[];
+  for (let i=1;i<vals.length;i++){
+    const row = vals[i]||[];
+    const name = (row[idxNom]||"").toString().trim();
+    if (!name) continue;
+    const roles=[];
+    if (row[idxCM]==="X") roles.push("CM");
+    if (row[idxSTR]==="X") roles.push("STR");
+    if (row[idxCPO]==="X") roles.push("CPO");
+    if (row[idxSPE]==="X") roles.push("SPE");
+    // HC n’est pas dans la sheet -> on considère HC autorisé si STR a X ? (adapter si besoin)
+    if (header.includes("HC")){
+      const idxHC = header.indexOf("HC");
+      if (row[idxHC]==="X") roles.push("HC");
+    } else {
+      // par défaut: on autorise HC à ceux qui ont STR (comme dans tes données habituelles)
+      if (roles.includes("STR")) roles.push("HC");
+    }
+    out.push({name, roles, active:true});
+  }
+  return out;
+}
+
+async function ensureSheets(names){
+  // lit le spreadsheet pour voir les feuilles existantes
+  const ss = await gapi.client.sheets.spreadsheets.get({spreadsheetId: SPREADSHEET_ID});
+  const existing = new Set((ss.result.sheets||[]).map(s=>s.properties.title));
+  const requests=[];
+  names.forEach(n=>{ if(!existing.has(n)) requests.push({addSheet:{properties:{title:n}}}); });
+  if (requests.length){
+    await gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      resource:{requests}
+    });
+    // Ajoute l’en-tête Historique
+    if (!existing.has("Historique")){
+      await gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: "Historique!A1:E1",
+        valueInputOption: "USER_ENTERED",
+        resource: { values: [["Date","Nom","Fonction","Tour","Source"]] }
+      });
+    }
+  }
+}
+
+// ======= SAVE =======
+async function onSave(){
+  const date = document.getElementById("dateInput").value;
+  if (!date) return show("Choisis une date", true);
+  // build assignments in order
+  const order = ["CM","HC","STR","CPO","SPE"];
+  const taken = new Set();
+  const assignments=[];
+  for (const fn of order){
+    const v = (document.getElementById(`sel-${fn}`)||{}).value || "";
+    if (!v) continue;
+    if (taken.has(v)) return show(`Conflit: ${v} déjà affecté`, true);
+    assignments.push([fn, v]);
+    taken.add(v);
+  }
+  if (!assignments.length) return show("Rien à enregistrer.", true);
+
+  // prepare historique rows + rotate queues
+  const histRows=[];
+  for (const [fn, name] of assignments){
+    histRows.push([date, name, fn, "1", "manuel"]);
+    if (fn==="STR" || fn==="CPO"){
+      queues["STR"] = rotate(queues["STR"], name);
+      queues["CPO"] = rotate(queues["CPO"], name);
+    } else {
+      queues[fn] = rotate(queues[fn], name);
+    }
+  }
+  saveQueues();
+
+  try{
+    // append historique
+    await gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "Historique!A:E",
+      valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS",
+      resource: { values: histRows }
+    });
+    // write queues
+    const out=[["Fonction","File (noms séparés par des virgules)"]];
+    for (const fn of FUNCTIONS){
+      out.push([fn, (queues[fn]||[]).join(", ")]);
+    }
+    await gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: "Queues!A1:B6",
+      valueInputOption: "USER_ENTERED",
+      resource: { values: out }
+    });
+    show("✅ Historique enregistré & files mises à jour.");
+    // reset selections
+    selected={CM:null,HC:null,STR:null,CPO:null,SPE:null};
+    renderSelectors();
+  }catch(e){
+    show("Erreur d’écriture Sheets (voir console)", true, e);
+  }
+}
+
+// ======= EVENTS =======
+document.getElementById("btnToday").onclick = setToday;
+</script>
 </body>
 </html>
