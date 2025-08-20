@@ -55,58 +55,6 @@
     .hidden { display: none; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
   </style>
-  <!--
-  ====================================================================
-  DockNet · index.html (tour de rôle manuel)
-  --------------------------------------------------------------------
-  Ce fichier unique permet :
-   - Saisir les affectations du jour (CM, HC, STR, CPO, SPE)
-   - Appliquer les règles de rotation :
-       * 1 fonction max / personne / jour
-       * STR/CPO couplés : si affecté à l’un → passe dernier dans les 2 files
-       * autre fonction : passe dernier dans sa file
-   - Bouton RETOUR ABS par personne (pousse en dernier dans toutes ses files possibles)
-   - Enregistrer : prépare l’historique + met à jour les files
-     (envoi prévu vers Apps Script côté serveur)
-
-  🔐 Recommandé : Google Apps Script comme “pont” sécurisé vers Google Sheets
-  Déployez ce Apps Script en tant que Web App, et remplacez API_URL ci-dessous.
-
-  // ---- Exemple Code.gs (à mettre dans votre projet Apps Script) ----
-  function doPost(e) {
-    const body = JSON.parse(e.postData.contents);
-    const ss = SpreadsheetApp.openById(body.sheetId); // OU openByUrl / openById
-    const hist = ss.getSheetByName('Historique') || ss.insertSheet('Historique');
-    const queues = ss.getSheetByName('Queues') || ss.insertSheet('Queues');
-
-    // Assure l’en-tête Historique
-    if (hist.getLastRow() === 0) {
-      hist.appendRow(['Date','Nom','Fonction','Tour','Source']);
-    }
-
-    // Append historique
-    const rows = body.historiqueRows || [];
-    if (rows.length) {
-      hist.getRange(hist.getLastRow()+1, 1, rows.length, rows[0].length).setValues(rows);
-    }
-
-    // Écrit les queues (écrasement simple)
-    const fnList = ['CM','HC','STR','CPO','SPE'];
-    const out = [['Fonction','File (noms séparés par des virgules)']];
-    fnList.forEach(fn => {
-      const line = [fn, (body.queues && body.queues[fn] ? body.queues[fn].join(', ') : '')];
-      out.push(line);
-    });
-    queues.clear();
-    queues.getRange(1,1,out.length,out[0].length).setValues(out);
-
-    return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
-  }
-  // ------------------------------------------------------------------
-
-  Remplacez ensuite `const API_URL = "..."` ci-dessous par l’URL de la Web App.
-  ====================================================================
-  -->
 </head>
 <body>
   <header>
@@ -126,26 +74,11 @@
       <div class="title">AFFECTATIONS DU JOUR</div>
       <div class="grid-2">
         <div>
-          <div class="row">
-            <label class="grow">CM</label>
-            <select id="sel-CM"></select>
-          </div>
-          <div class="row">
-            <label class="grow">HC</label>
-            <select id="sel-HC"></select>
-          </div>
-          <div class="row">
-            <label class="grow">STR</label>
-            <select id="sel-STR"></select>
-          </div>
-          <div class="row">
-            <label class="grow">CPO</label>
-            <select id="sel-CPO"></select>
-          </div>
-          <div class="row">
-            <label class="grow">SPE</label>
-            <select id="sel-SPE"></select>
-          </div>
+          <div class="row"><label class="grow">CM</label><select id="sel-CM"></select></div>
+          <div class="row"><label class="grow">HC</label><select id="sel-HC"></select></div>
+          <div class="row"><label class="grow">STR</label><select id="sel-STR"></select></div>
+          <div class="row"><label class="grow">CPO</label><select id="sel-CPO"></select></div>
+          <div class="row"><label class="grow">SPE</label><select id="sel-SPE"></select></div>
         </div>
         <div>
           <div class="note">
@@ -167,9 +100,7 @@
     <section class="card">
       <div class="title">ÉQUIPE & RETOUR ABS</div>
       <table id="teamTable">
-        <thead>
-          <tr><th>Nom</th><th>Fonctions</th><th style="width:1%">Action</th></tr>
-        </thead>
+        <thead><tr><th>Nom</th><th>Fonctions</th><th style="width:1%">Action</th></tr></thead>
         <tbody></tbody>
       </table>
       <div class="inline">
@@ -178,7 +109,7 @@
         <button id="resetQueuesBtn" class="danger">Réinitialiser files</button>
       </div>
       <textarea id="jsonArea" class="mono hidden" rows="6"></textarea>
-      <div class="muted">Astuce : les files sont aussi mémorisées dans ce navigateur (localStorage).</div>
+      <div class="muted">Astuce : les files sont mémorisées dans ce navigateur (localStorage).</div>
     </section>
 
     <section class="card">
@@ -189,36 +120,18 @@
 
   <script>
     // === CONFIG ===
-    // Remplacez par l’URL de votre Apps Script Web App si vous voulez enregistrer dans Google Sheets.
     const API_URL = ""; // ex: "https://script.google.com/macros/s/XXX/exec"
-    // Identifiant de la feuille (si vous utilisez openById côté Apps Script)
-    const SHEET_ID = ""; // ex: "1AbCDEF..."
-
-    // Équipe : ajustez selon votre équipe (noms & fonctions possibles)
-    const TEAM = [
-      // Exemple :
-      { name: "GUIRAMAND JÉRÔME", roles: ["STR","SPE","CPO","HC"], active: true },
-      { name: "MALATRAIT JULIEN", roles: ["STR","SPE","CPO","HC"], active: true },
-      { name: "SIMITSIDIS YOHAN", roles: ["STR","HC"], active: true },
-      { name: "DELATTRE ROMAIN", roles: ["STR","HC"], active: true },
-      { name: "NOVELLI FLORIAN", roles: ["STR","HC"], active: true },
-      { name: "LOZANO THOMAS", roles: ["STR","HC"], active: true },
-      { name: "DELATTRE QUENTIN", roles: ["STR","HC"], active: true },
-      { name: "GATTO BAPTISTE", roles: ["STR","HC"], active: true },
-      { name: "DEJAMEAU THÉO", roles: ["STR","HC"], active: true },
-      { name: "LOZANO PAUL", roles: ["STR","HC"], active: true },
-      { name: "SCHITZ GUILLAUME", roles: ["CM"], active: true },
-      { name: "SERRES MAX", roles: [], active: true },
-    ];
+    const SHEET_ID = "1tQDNxbChlSOeSH9vdom5Vv8Btb1Djv3vXuwqKiY_A"; // détecté depuis ta capture
+    const TEAM_TAB_NAME = "ÉQUIPE"; // avec accent
 
     const FUNCTIONS = ["CM","HC","STR","CPO","SPE"];
     const DEFAULT_ORDER = ["CM","HC","STR","CPO","SPE"];
 
-    // Local state
-    let queues = loadQueues() || initQueuesFromTeam();
+    let TEAM = []; // chargé dynamiquement depuis la Sheet
+    let queues = loadQueues() || {}; // initialisées après loadTeam
     let selected = { CM:null, HC:null, STR:null, CPO:null, SPE:null };
 
-    // --- Helpers ---
+    // Helpers
     function formatDateISO(d){ return d.toISOString().slice(0,10); }
     function today(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
     function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
@@ -249,6 +162,8 @@
       if (arr.includes(name)) out.push(name);
       return out;
     }
+
+    // Rendering
     function renderQueues(){
       const wrap = document.getElementById("queuesView");
       wrap.innerHTML = "";
@@ -286,11 +201,9 @@
           </td>`;
         tbody.appendChild(tr);
       });
-      // bind retour
       document.querySelectorAll(".retourBtn").forEach(btn => {
         btn.addEventListener("click", (e)=>{
           const name = e.currentTarget.dataset.name;
-          // pousser en dernier dans toutes ses files autorisées
           const person = TEAM.find(t => t.name===name);
           if (!person) return;
           for (const fn of person.roles){
@@ -304,40 +217,57 @@
       const used = new Set(Object.values(selected).filter(Boolean));
       for (const fn of FUNCTIONS){
         const sel = document.getElementById(`sel-${fn}`);
-        const eligible = queues[fn]?.filter(n => canDo(n, fn)) || allEligible(fn);
+        const eligible = (queues[fn]?.filter(n => canDo(n, fn)) || allEligible(fn));
         sel.innerHTML = `<option value="">—</option>` + eligible.map(n => {
           const dis = used.has(n) && selected[fn]!==n ? "disabled" : "";
           return `<option ${dis} value="${n}" ${selected[fn]===n?"selected":""}>${n}</option>`;
         }).join("");
-        sel.onchange = () => {
-          selected[fn] = sel.value || null;
-          renderSelectors(); // rafraîchit les disabled
-        };
+        sel.onchange = () => { selected[fn] = sel.value || null; renderSelectors(); };
       }
     }
 
-    // --- Save (apply rules + send to Apps Script) ---
+    // Load Team from Apps Script
+    async function loadTeam(){
+      if (!API_URL) {
+        TEAM = [];
+        queues = loadQueues() || {};
+        renderTeam(); renderQueues(); renderSelectors();
+        return;
+      }
+      try {
+        const url = API_URL + "?sheetId=" + encodeURIComponent(SHEET_ID) + "&teamTab=" + encodeURIComponent(TEAM_TAB_NAME);
+        const res = await fetch(url);
+        const data = await res.json();
+        TEAM = data.team || [];
+        queues = loadQueues() || initQueuesFromTeam();
+        renderTeam(); renderQueues(); renderSelectors();
+      } catch(e){
+        console.error("Erreur fetch équipe:", e);
+        TEAM = [];
+        queues = loadQueues() || {};
+        renderTeam(); renderQueues(); renderSelectors();
+      }
+    }
+
+    // Save (apply rules + POST)
     async function onSave(){
       const date = document.getElementById("dateInput").value;
       if (!date){ return showMsg("Choisis une date", true); }
 
-      // Build assignments in order
       const order = DEFAULT_ORDER;
       const dayAssignments = [];
       const taken = new Set();
       for (const fn of order){
         const name = selected[fn];
         if (!name) continue;
-        if (taken.has(name)) { showMsg(`Conflit: ${name} déjà affecté today`, true); return; }
+        if (taken.has(name)) { showMsg(\`Conflit: \${name} déjà affecté today\`, true); return; }
         dayAssignments.push([fn, name]);
         taken.add(name);
       }
 
-      // Prepare historique rows and rotate queues accordingly
-      // tour index = rang du jour pour cette fonction = 1 si on fait 1 par fn/jour
       const historiqueRows = [];
       for (const [fn, name] of dayAssignments){
-        const tourIdx = 1; // on enregistre une seule ligne par fonction / jour ici
+        const tourIdx = 1;
         historiqueRows.push([date, name, fn, String(tourIdx), "manuel"]);
         if (fn === "STR" || fn === "CPO"){
           queues["STR"] = rotate(queues["STR"]||[], name);
@@ -348,7 +278,6 @@
       }
       saveQueues();
 
-      // Try to POST to Apps Script if configured
       if (API_URL){
         try {
           const res = await fetch(API_URL, {
@@ -356,28 +285,21 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               sheetId: SHEET_ID,
+              teamTab: TEAM_TAB_NAME,
               date,
-              assignments: dayAssignments,   // [["CM","NOM"], ["HC","NOM"], ...]
-              historiqueRows,               // [[Date, Nom, Fonction, Tour, Source], ...]
-              queues                        // {CM:[], HC:[], ...}
+              assignments: dayAssignments,
+              historiqueRows,
+              queues
             })
           });
           const data = await res.json().catch(()=>({}));
-          if (res.ok && data && (data.ok===true || data.status==="ok")){
-            showMsg("✅ Enregistré dans l’historique et files mises à jour.");
-          } else {
-            showMsg("Enregistré localement. Erreur Apps Script (voir console).", true);
-            console.warn("Apps Script response:", res.status, data);
-          }
-        } catch (err){
-          showMsg("Enregistré localement. Impossible d’appeler Apps Script (voir console).", true);
-          console.error(err);
-        }
+          if (res.ok && (data.ok===true || data.status==="ok")){ showMsg("✅ Écrit dans la Sheet + files à jour."); }
+          else { showMsg("Local OK. Erreur Apps Script (voir console).", true); console.warn("Apps Script response:", res.status, data); }
+        } catch(err){ showMsg("Local OK. Apps Script inaccessible (voir console).", true); console.error(err); }
       } else {
         showMsg("Enregistré localement. Configure API_URL pour écrire dans Google Sheets.", true);
       }
 
-      // Reset selections for the next day (optional)
       selected = { CM:null, HC:null, STR:null, CPO:null, SPE:null };
       renderSelectors();
     }
@@ -388,7 +310,7 @@
       el.style.color = warn ? "#ffb4b4" : "#a7f3d0";
     }
 
-    // --- Import / Export ---
+    // Import / Export / Reset
     document.getElementById("exportQueuesBtn")?.addEventListener("click", ()=>{
       const ta = document.getElementById("jsonArea");
       ta.classList.remove("hidden");
@@ -427,27 +349,77 @@
       showMsg("Files réinitialisées.");
     });
 
-    // --- Date UX ---
+    // Date UX
     (function initDate(){
       const input = document.getElementById("dateInput");
       const d = today();
       input.value = formatDateISO(d);
       document.getElementById("todayBtn").onclick = ()=>{ input.value = formatDateISO(today()); };
-      document.getElementById("prevDay").onclick = ()=>{
-        const cur = new Date(input.value); input.value = formatDateISO(addDays(cur, -1));
-      };
-      document.getElementById("nextDay").onclick = ()=>{
-        const cur = new Date(input.value); input.value = formatDateISO(addDays(cur, +1));
-      };
+      document.getElementById("prevDay").onclick = ()=>{ const cur = new Date(input.value); input.value = formatDateISO(addDays(cur, -1)); };
+      document.getElementById("nextDay").onclick = ()=>{ const cur = new Date(input.value); input.value = formatDateISO(addDays(cur, +1)); };
     })();
 
-    // --- Init UI ---
-    renderTeam();
-    renderQueues();
-    renderSelectors();
-
-    // Bind save
+    // Init
     document.getElementById("saveBtn").addEventListener("click", onSave);
+    loadTeam();
   </script>
+
+  <!--
+  ===== Apps Script côté serveur (Code.gs) =====
+  // doGet : renvoie l'équipe depuis l'onglet TEAM_TAB_NAME (colonnes: NOM, CM, STR, CPO, SPE, valeurs "X")
+  function doGet(e) {
+    const sheetId = e.parameter.sheetId;
+    const tab = e.parameter.teamTab || "ÉQUIPE";
+    const ss = SpreadsheetApp.openById(sheetId);
+    const sh = ss.getSheetByName(tab);
+    const data = sh.getDataRange().getValues();
+    const header = data[0]; // ["NOM","CM","STR","CPO","SPE"]
+    const team = [];
+    for (let i=1; i<data.length; i++) {
+      const row = data[i];
+      if (!row[0]) continue;
+      const name = row[0].toString();
+      const roles = [];
+      for (let j=1; j<header.length; j++) {
+        const h = (header[j]||"").toString().trim().toUpperCase();
+        if (!h) continue;
+        if (row[j] && row[j].toString().trim().toUpperCase() === "X") roles.push(h);
+      }
+      team.push({ name, roles, active: true });
+    }
+    return ContentService.createTextOutput(JSON.stringify({ team }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // doPost : écrit Historique + Queues
+  function doPost(e) {
+    const body = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.openById(body.sheetId);
+    const hist = ss.getSheetByName('Historique') || ss.insertSheet('Historique');
+    const queues = ss.getSheetByName('Queues') || ss.insertSheet('Queues');
+
+    if (hist.getLastRow() === 0) {
+      hist.appendRow(['Date','Nom','Fonction','Tour','Source']);
+    }
+
+    const rows = body.historiqueRows || [];
+    if (rows.length) {
+      hist.getRange(hist.getLastRow()+1, 1, rows.length, rows[0].length).setValues(rows);
+    }
+
+    const fnList = ['CM','HC','STR','CPO','SPE'];
+    const out = [['Fonction','File (noms séparés par des virgules)']];
+    fnList.forEach(fn => {
+      const line = [fn, (body.queues && body.queues[fn] ? body.queues[fn].join(', ') : '')];
+      out.push(line);
+    });
+    queues.clear();
+    queues.getRange(1,1,out.length,out[0].length).setValues(out);
+
+    return ContentService.createTextOutput(JSON.stringify({ok:true}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  ==============================================
+  -->
 </body>
 </html>
