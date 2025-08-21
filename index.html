@@ -1,340 +1,490 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>DockNet — Tour de rôle (tout‑en‑un)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tours de rôle – Interface</title>
   <style>
-    :root { color-scheme: dark; }
-    body{margin:0;font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#0b111b;color:#e6eefc}
-    header{position:sticky;top:0;background:linear-gradient(180deg,#0e1626 0%,#0b111b 100%);border-bottom:1px solid #22304a;padding:12px 16px;display:grid;gap:8px}
-    .brand{font-weight:800;letter-spacing:1.1px}
-    .row{display:flex;gap:8px;align-items:center}
-    button,select,input[type="date"]{background:#111a2b;color:#e6eefc;border:1px solid #22304a;border-radius:12px;padding:10px;cursor:pointer}
-    button:hover{border-color:#3a527a}
-    main{padding:14px;display:grid;gap:16px}
-    .card{background:#0f1727;border:1px solid #22304a;border-radius:16px;padding:12px;display:grid;gap:10px}
-    .title{font-size:12px;letter-spacing:1.4px;font-weight:800;color:#9fb4dc;opacity:.9}
-    .grid-2{display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:900px){.grid-2{grid-template-columns:1fr 1fr}}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px 10px;border-bottom:1px solid #22304a}
-    th{text-align:left;font-size:12px;color:#9fb4dc;letter-spacing:.5px}
-    .queue{display:flex;flex-wrap:wrap;gap:6px}
-    .pill{border:1px solid #22304a;background:#121a2a;border-radius:999px;padding:6px 10px;font-size:12px}
-    .muted{opacity:.85;font-size:12px}
-    .good{color:#a7f3d0} .warn{color:#ffb4b4}
+    :root{
+      --bg:#0f1115;
+      --card:#161a21;
+      --text:#e9eef7;
+      --muted:#98a2b3;
+      --accent:#4CAF50;       /* semaine */
+      --accent-2:#FF7043;     /* dimanche */
+      --line:#262b36;
+      --btn:#232a36;
+      --ok:#00c853;
+      --warn:#ff6d00;
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans",sans-serif}
+    .wrap{max-width:980px;margin:0 auto;padding:16px}
+    h1{font-size:22px;margin:12px 0 8px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:760px){.grid{grid-template-columns:1fr 1fr}}
+    .pill{padding:6px 10px;border-radius:999px;background:#1e2430;color:var(--muted);font-size:12px;border:1px solid var(--line)}
+    input,select{background:#151a22;border:1px solid var(--line);color:var(--text);padding:10px;border-radius:10px;outline:none}
+    button{border:0;padding:10px 12px;border-radius:10px;color:white;font-weight:600;cursor:pointer}
+    .btn-semaine{background:var(--accent)}
+    .btn-dimanche{background:var(--accent-2)}
+    .btn-ghost{background:#232a36;color:#eaeef7;border:1px solid var(--line)}
+    .btn-danger{background:#e53935}
+    .fonction{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between;border-bottom:1px dashed var(--line);padding:10px 0}
+    .fonction:last-child{border-bottom:0}
+    .fn-left{display:flex;align-items:center;gap:10px;min-width:220px}
+    .fn-title{font-weight:700;letter-spacing:.3px}
+    .next{font-size:13px;color:var(--muted)}
+    .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .spacer{flex:1}
+    .list{display:flex;gap:6px;flex-wrap:wrap}
+    .tag{background:#1e2430;border:1px solid var(--line);color:#cbd5e1;padding:4px 8px;border-radius:999px;font-size:12px}
+    .small{font-size:12px;color:var(--muted)}
+    .foot{opacity:.8;font-size:12px;margin-top:8px}
+    .link{color:#8ab4ff;text-decoration:none}
+    .hr{height:1px;background:var(--line);margin:10px 0}
   </style>
-  <script src="https://apis.google.com/js/api.js"></script>
 </head>
 <body>
-<header>
-  <div class="row" style="justify-content:space-between">
-    <div class="brand">DOCKNET — TOUR DE RÔLE</div>
+  <div class="wrap">
+    <h1>🧭 Tours de rôle</h1>
     <div class="row">
-      <button id="btnSignIn">Connexion Google</button>
-      <button id="btnSignOut" style="display:none">Déconnexion</button>
-    </div>
-  </div>
-  <div class="row">
-    <input type="date" id="dateInput"/>
-    <button id="btnToday">Aujourd’hui</button>
-  </div>
-</header>
-
-<main>
-  <section class="card">
-    <div class="title">AFFECTATIONS DU JOUR</div>
-    <div class="grid-2">
-      <div>
-        <div class="row"><label style="width:60px">CM</label><select id="sel-CM"></select></div>
-        <div class="row"><label style="width:60px">HC</label><select id="sel-HC"></select></div>
-        <div class="row"><label style="width:60px">STR</label><select id="sel-STR"></select></div>
-        <div class="row"><label style="width:60px">CPO</label><select id="sel-CPO"></select></div>
-        <div class="row"><label style="width:60px">SPE</label><select id="sel-SPE"></select></div>
+      <div class="card" style="flex:1">
+        <div class="row">
+          <div class="pill">Date</div>
+          <input id="dateInput" type="date"/>
+          <div class="pill">Feuille</div>
+          <input id="sheetId" placeholder="SHEET_ID (optionnel)"/>
+        </div>
+        <div class="foot">Astuce: samedi soir et fériés → clique <b>Dimanche</b> pour la fonction concernée.</div>
       </div>
-      <div>
-        <div class="muted">Règles : 1 fonction max / personne / jour. STR et CPO sont liés (si tu prends l’un, tu vas en dernier dans les 2 files). Les autres → dernier dans leur file.</div>
-        <div class="row"><button id="btnSave" style="flex:1">Enregistrer (Historique + Files)</button></div>
-        <div id="msg" class="muted"></div>
+      <div class="card" style="min-width:260px">
+        <div class="row" style="justify-content:space-between">
+          <div class="pill">Équipe</div>
+          <button class="btn-ghost" id="reloadTeam">Recharger</button>
+        </div>
+        <div id="teamList" class="list" style="margin-top:8px"></div>
+        <div class="foot">Bouton <b>RETOUR ABS</b> dans la liste équipe (passe dernier·e dans toutes ses listes).</div>
       </div>
     </div>
-  </section>
 
-  <section class="card">
-    <div class="title">ÉQUIPE & RETOUR ABS</div>
-    <table>
-      <thead><tr><th>Nom</th><th>Fonctions</th><th style="width:1%">Action</th></tr></thead>
-      <tbody id="teamBody"></tbody>
-    </table>
-  </section>
+    <div class="grid" style="margin-top:12px">
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div class="pill">Affectations du jour</div>
+          <div class="small">1 seule fonction par personne</div>
+        </div>
+        <div id="fonctions"></div>
+      </div>
 
-  <section class="card">
-    <div class="title">FILES ACTUELLES</div>
-    <div id="queuesView" class="grid-2"></div>
-  </section>
-</main>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div class="pill">Historique (local)</div>
+          <div class="inline">
+            <button class="btn-ghost" id="exportJson">Exporter JSON</button>
+            <button class="btn-ghost" id="clearHistory">Vider</button>
+          </div>
+        </div>
+        <div id="history"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="pill">Instructions d’intégration Sheets</div>
+      <div class="small">
+        - Remplace <code>saveToSheets()</code> par un <code>fetch()</code> vers ton Apps Script WebApp (POST JSON).<br/>
+        - Renseigne <b>SHEET_ID</b> si tu veux charger l’équipe automatiquement via l’API de feuille publiée (endpoint gviz).<br/>
+        - Par défaut, l’app sauvegarde en <b>localStorage</b> (démo offline).
+      </div>
+    </div>
+
+    <div class="foot">v0.3 – séparation semaine/dimanche pour CM, STR, CPO. HC/SPE un seul tour (le clic Dimanche ne change que le type dans l’historique).</div>
+  </div>
 
 <script>
-// ======= CONFIG À REMPLIR (tu peux laisser la clé dans ce fichier si tu veux) =======
-const SPREADSHEET_ID = "1tQDNxbChlSOeSH9vdom5Vv8Btb1Djv3vXuwqKiY_A"; // ta feuille
-const TEAM_RANGE = "ÉQUIPE!A:E";   // NOM | CM | STR | CPO | SPE
-const API_KEY = "PASTE_YOUR_API_KEY_HERE";
-const CLIENT_ID = "PASTE_YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com";
-const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+/** =========================
+ *  CONFIG
+ *  ========================= */
+const CONFIG = {
+  SHEET_ID: "", // optionnel : colle ici l'ID de ta Sheet pour charger l'équipe automatiquement
+  TEAM_SHEET_NAME: "Equipe", // onglet avec la liste des noms
+};
 
-// ======= ÉTAT LOCAL =======
-const FUNCTIONS = ["CM","HC","STR","CPO","SPE"];
-let TEAM = []; // {name, roles[], active}
-let queues = loadQueues() || {}; // {fn:[names...]}
-let selected = {CM:null,HC:null,STR:null,CPO:null,SPE:null};
+// Seed équipe (fallback si pas de sheet). Remplace par ton chargement depuis Google Sheets.
+let TEAM = [
+  "SCHITZ GUILLAUME",
+  "GUIRAMAND JÉRÔME",
+  "MALATRAIT JULIEN",
+  "SIMITSIDIS YOHAN",
+  "DELATTRE ROMAIN",
+  "NOVELLI FLORIAN",
+  "LOZANO THOMAS",
+  "DELATTRE QUENTIN",
+  "GATTO BAPTISTE",
+  "DEJAMEAU THÉO",
+  "LOZANO PAUL",
+  "SERRES MAX"
+].sort();
 
-// ======= INIT GOOGLE API =======
-function initClient(){
-  gapi.client.init({
-    apiKey: API_KEY,
-    clientId: CLIENT_ID,
-    discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-    scope: SCOPES
-  }).then(()=>{
-    const auth = gapi.auth2.getAuthInstance();
-    auth.isSignedIn.listen(updateSigninStatus);
-    updateSigninStatus(auth.isSignedIn.get());
-    document.getElementById('btnSignIn').onclick=()=>auth.signIn();
-    document.getElementById('btnSignOut').onclick=()=>auth.signOut();
-  }).catch(err=>show("Init API error", true, err));
-}
-gapi.load("client:auth2", initClient);
+/** =========================
+ *  ÉTAT (persisté en localStorage)
+ *  ========================= */
+const LS_KEYS = {
+  ROSTERS: "tdr_rosters_v03",   // listes de tours
+  HISTORY: "tdr_history_v03",   // historique des affectations
+};
 
-function updateSigninStatus(isSignedIn){
-  document.getElementById('btnSignIn').style.display = isSignedIn ? "none" : "";
-  document.getElementById('btnSignOut').style.display = isSignedIn ? "" : "none";
-  if (isSignedIn){ boot(); }
-}
+// Structure des rosters (listes de tours)
+const DEFAULT_ROSTERS = {
+  CM:     { semaine: [], dimanche: [] },
+  STR:    { semaine: [], dimanche: [] },
+  CPO:    { semaine: [], dimanche: [] },
+  HC:     { unique: [] },
+  SPE:    { unique: [] },
+};
 
-// ======= BOOT =======
-async function boot(){
-  setToday();
+// Chargement / sauvegarde LS
+function loadLS(key, fallback){
   try{
-    await ensureSheets(["Historique","Queues"]);
-    TEAM = await fetchTeam();
-    if (!Object.keys(queues).length) queues = initQueuesFromTeam(TEAM);
-    renderAll();
-  }catch(e){ show("Erreur boot", true, e); }
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ console.warn(e); return fallback; }
+}
+function saveLS(key, val){
+  localStorage.setItem(key, JSON.stringify(val));
 }
 
-// ======= HELPERS =======
-function setToday(){
-  const d = new Date(); d.setHours(0,0,0,0);
-  document.getElementById("dateInput").value = d.toISOString().slice(0,10);
-  document.getElementById("btnToday").onclick = setToday;
-}
-function show(txt, warn=false, err=null){
-  const m = document.getElementById("msg");
-  m.textContent = txt;
-  m.className = "muted " + (warn?"warn":"good");
-  if (err) console.error(err);
-}
-function uniq(a){ return Array.from(new Set(a)); }
-function canDo(person, fn){ return person.roles.includes(fn); }
-function initQueuesFromTeam(team){
-  const q={};
-  for (const fn of FUNCTIONS){
-    q[fn] = team.filter(p=>canDo(p,fn)).map(p=>p.name).sort((a,b)=>a.localeCompare(b,'fr'));
+let ROSTERS = loadLS(LS_KEYS.ROSTERS, DEFAULT_ROSTERS);
+let HISTORY = loadLS(LS_KEYS.HISTORY, []);
+
+// Util: s'assurer que tous les noms TEAM existent dans les rosters (init à 1er lancement)
+function ensureTeamInRosters(){
+  const ensure = (arr)=>{
+    TEAM.forEach(n=>{ if(!arr.includes(n)) arr.push(n); });
+    // retire inconnus
+    for(let i=arr.length-1;i>=0;i--){
+      if(!TEAM.includes(arr[i])) arr.splice(i,1);
+    }
   }
-  saveQueues(q);
-  return q;
+  ensure(ROSTERS.CM.semaine);
+  ensure(ROSTERS.CM.dimanche);
+  ensure(ROSTERS.STR.semaine);
+  ensure(ROSTERS.STR.dimanche);
+  ensure(ROSTERS.CPO.semaine);
+  ensure(ROSTERS.CPO.dimanche);
+  ensure(ROSTERS.HC.unique);
+  ensure(ROSTERS.SPE.unique);
 }
-function rotate(arr,name){
-  const out = (arr||[]).filter(x=>x!==name);
-  if ((arr||[]).includes(name)) out.push(name);
-  return out;
-}
-function saveQueues(q=queues){
-  queues = q;
-  localStorage.setItem("docknet_queues", JSON.stringify(queues));
-}
-function loadQueues(){
-  try{ return JSON.parse(localStorage.getItem("docknet_queues")||"null"); }catch(e){ return null; }
-}
+ensureTeamInRosters();
 
-// ======= UI RENDER =======
-function renderAll(){
-  renderTeam();
-  renderQueues();
-  renderSelectors();
-  document.getElementById("btnSave").onclick = onSave;
-}
+/** =========================
+ *  UI: rendu équipe + bouton RETOUR ABS
+ *  ========================= */
 function renderTeam(){
-  const tb = document.getElementById("teamBody"); tb.innerHTML="";
-  TEAM.forEach(p=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${p.name}</td>
-    <td>${p.roles.join(", ")||"—"}</td>
-    <td><button data-name="${p.name}" class="btnRetour">RETOUR ABS</button></td>`;
-    tb.appendChild(tr);
+  const box = document.getElementById("teamList");
+  box.innerHTML = "";
+  TEAM.forEach(name=>{
+    const tag = document.createElement("div");
+    tag.className = "tag";
+    tag.innerHTML = `
+      <span>${name}</span>
+      <button class="btn-ghost" style="margin-left:6px" data-name="${name}">RETOUR ABS</button>
+    `;
+    box.appendChild(tag);
   });
-  document.querySelectorAll(".btnRetour").forEach(b=>b.onclick = e=>{
-    const name = e.currentTarget.dataset.name;
-    const person = TEAM.find(t=>t.name===name);
-    for (const fn of person.roles){
-      queues[fn] = rotate(queues[fn], name);
-    }
-    saveQueues();
-    renderQueues(); renderSelectors();
-    show(`RETOUR ABS → ${name} envoyé en dernier de ses files`);
+
+  // Bind
+  box.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      const name = e.target.getAttribute("data-name");
+      retourABS(name);
+    });
   });
 }
-function renderQueues(){
-  const wrap = document.getElementById("queuesView");
-  wrap.innerHTML="";
-  for (const fn of FUNCTIONS){
-    const box = document.createElement("div");
-    box.className="card";
-    box.innerHTML = `<div class="title">${fn}</div><div class="queue"></div>`;
-    const q = box.querySelector(".queue");
-    (queues[fn]||[]).forEach(n=>{
-      const d = document.createElement("div"); d.className="pill"; d.textContent=n; q.appendChild(d);
-    });
-    wrap.appendChild(box);
+
+/** =========================
+ *  LOGIQUE RETOUR ABS
+ *  - Passe la personne en dernier de toutes les listes où elle est présente/éligible
+ *  ========================= */
+function moveToEnd(list, name){
+  const idx = list.indexOf(name);
+  if(idx>-1){
+    list.splice(idx,1);
+    list.push(name);
   }
 }
-function renderSelectors(){
-  const used = new Set(Object.values(selected).filter(Boolean));
-  for (const fn of FUNCTIONS){
-    const sel = document.getElementById(`sel-${fn}`);
-    const eligible = (queues[fn]||[]).filter(n=>{
-      const person = TEAM.find(p=>p.name===n);
-      return person && canDo(person, fn);
-    });
-    sel.innerHTML = `<option value="">—</option>` + eligible.map(n=>{
-      const dis = used.has(n) && selected[fn]!==n ? "disabled":"";
-      return `<option ${dis} value="${n}" ${selected[fn]===n?"selected":""}>${n}</option>`
-    }).join("");
-    sel.onchange = ()=>{ selected[fn] = sel.value || null; renderSelectors(); }
-  }
+function retourABS(name){
+  moveToEnd(ROSTERS.CM.semaine, name);
+  moveToEnd(ROSTERS.CM.dimanche, name);
+  moveToEnd(ROSTERS.STR.semaine, name);
+  moveToEnd(ROSTERS.STR.dimanche, name);
+  moveToEnd(ROSTERS.CPO.semaine, name);
+  moveToEnd(ROSTERS.CPO.dimanche, name);
+  moveToEnd(ROSTERS.HC.unique, name);
+  moveToEnd(ROSTERS.SPE.unique, name);
+  saveLS(LS_KEYS.ROSTERS, ROSTERS);
+  renderFonctions();
 }
 
-// ======= SHEETS OPS =======
-async function fetchTeam(){
-  const res = await gapi.client.sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: TEAM_RANGE
+/** =========================
+ *  UI: Fonctions (ligne compacte = tour + boutons)
+ *  ========================= */
+const FONCTIONS = [
+  { key:"CM",  label:"CM",  type:"dual" },
+  { key:"HC",  label:"HC",  type:"single" },
+  { key:"STR", label:"STR", type:"dual", isConduite:true },
+  { key:"CPO", label:"CPO", type:"dual", isConduite:true },
+  { key:"SPE", label:"SPE", type:"single" },
+];
+
+function renderFonctions(){
+  ensureTeamInRosters();
+  const root = document.getElementById("fonctions");
+  root.innerHTML = "";
+  FONCTIONS.forEach(fn=>{
+    const container = document.createElement("div");
+    container.className = "fonction";
+
+    // Déterminer le "prochain" selon liste
+    let nextSemaine = null;
+    let nextDimanche = null;
+    if(fn.type==="dual"){
+      nextSemaine  = (ROSTERS[fn.key].semaine[0]) || "—";
+      nextDimanche = (ROSTERS[fn.key].dimanche[0]) || "—";
+    }else{
+      nextSemaine  = (ROSTERS[fn.key].unique[0]) || "—";
+      nextDimanche = nextSemaine; // même liste (on différenciera juste dans l'historique)
+    }
+
+    // Combo override manuel
+    const selectId = `sel_${fn.key}`;
+    const selectHtml = `<select id="${selectId}"><option value="">(auto)</option>${TEAM.map(n=>`<option>${n}</option>`).join("")}</select>`;
+
+    container.innerHTML = `
+      <div class="fn-left">
+        <div class="fn-title">${fn.label}</div>
+        <div class="next">Prochain Semaine: <b>${nextSemaine}</b></div>
+        <div class="next">Prochain Dimanche: <b>${nextDimanche}</b></div>
+      </div>
+      <div class="inline">
+        ${selectHtml}
+        <button class="btn-semaine" data-fn="${fn.key}" data-when="semaine">Semaine</button>
+        <button class="btn-dimanche" data-fn="${fn.key}" data-when="dimanche">Dimanche</button>
+      </div>
+    `;
+    root.appendChild(container);
   });
-  const vals = res.result.values || [];
-  const header = (vals[0]||[]).map(h=>h.toString().trim().toUpperCase());
-  const idxNom = header.indexOf("NOM");
-  const idxCM = header.indexOf("CM");
-  const idxSTR= header.indexOf("STR");
-  const idxCPO= header.indexOf("CPO");
-  const idxSPE= header.indexOf("SPE");
-  const out=[];
-  for (let i=1;i<vals.length;i++){
-    const row = vals[i]||[];
-    const name = (row[idxNom]||"").toString().trim();
-    if (!name) continue;
-    const roles=[];
-    if (row[idxCM]==="X") roles.push("CM");
-    if (row[idxSTR]==="X") roles.push("STR");
-    if (row[idxCPO]==="X") roles.push("CPO");
-    if (row[idxSPE]==="X") roles.push("SPE");
-    // HC n’est pas dans la sheet -> on considère HC autorisé si STR a X ? (adapter si besoin)
-    if (header.includes("HC")){
-      const idxHC = header.indexOf("HC");
-      if (row[idxHC]==="X") roles.push("HC");
-    } else {
-      // par défaut: on autorise HC à ceux qui ont STR (comme dans tes données habituelles)
-      if (roles.includes("STR")) roles.push("HC");
-    }
-    out.push({name, roles, active:true});
-  }
-  return out;
-}
 
-async function ensureSheets(names){
-  // lit le spreadsheet pour voir les feuilles existantes
-  const ss = await gapi.client.sheets.spreadsheets.get({spreadsheetId: SPREADSHEET_ID});
-  const existing = new Set((ss.result.sheets||[]).map(s=>s.properties.title));
-  const requests=[];
-  names.forEach(n=>{ if(!existing.has(n)) requests.push({addSheet:{properties:{title:n}}}); });
-  if (requests.length){
-    await gapi.client.sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      resource:{requests}
+  // Bind affectations
+  root.querySelectorAll("button").forEach(btn=>{
+    const when = btn.getAttribute("data-when");
+    const fnKey = btn.getAttribute("data-fn");
+    if(!when || !fnKey) return;
+    btn.addEventListener("click", ()=>{
+      const sel = document.getElementById(`sel_${fnKey}`);
+      const selected = sel && sel.value ? sel.value : null;
+      affecter(fnKey, when, selected);
     });
-    // Ajoute l’en-tête Historique
-    if (!existing.has("Historique")){
-      await gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: "Historique!A1:E1",
-        valueInputOption: "USER_ENTERED",
-        resource: { values: [["Date","Nom","Fonction","Tour","Source"]] }
-      });
-    }
-  }
+  });
 }
 
-// ======= SAVE =======
-async function onSave(){
-  const date = document.getElementById("dateInput").value;
-  if (!date) return show("Choisis une date", true);
-  // build assignments in order
-  const order = ["CM","HC","STR","CPO","SPE"];
-  const taken = new Set();
-  const assignments=[];
-  for (const fn of order){
-    const v = (document.getElementById(`sel-${fn}`)||{}).value || "";
-    if (!v) continue;
-    if (taken.has(v)) return show(`Conflit: ${v} déjà affecté`, true);
-    assignments.push([fn, v]);
-    taken.add(v);
-  }
-  if (!assignments.length) return show("Rien à enregistrer.", true);
+/** =========================
+ *  AFFECTATION
+ *  Règles:
+ *   - 1 fonction max par personne par date
+ *   - STR/CPO: si affecté, descendre en dernier dans les 2 listes du type choisi (semaine OU dimanche)
+ *   - CM: descendre en dernier dans la liste du type choisi seulement
+ *   - HC/SPE: une seule liste (unique). Le clic Dimanche ne fait que tagger l'historique.
+ *  ========================= */
+function getDateStr(){
+  const input = document.getElementById("dateInput");
+  const d = input.value ? new Date(input.value) : new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
 
-  // prepare historique rows + rotate queues
-  const histRows=[];
-  for (const [fn, name] of assignments){
-    histRows.push([date, name, fn, "1", "manuel"]);
-    if (fn==="STR" || fn==="CPO"){
-      queues["STR"] = rotate(queues["STR"], name);
-      queues["CPO"] = rotate(queues["CPO"], name);
-    } else {
-      queues[fn] = rotate(queues[fn], name);
-    }
+function assignedTodaySet(dateStr){
+  // Personnes déjà affectées sur cette date
+  const set = new Set();
+  for(const h of HISTORY){
+    if(h.date===dateStr){ set.add(h.nom); }
   }
-  saveQueues();
+  return set;
+}
 
+function rotate(list, chosen){
+  if(!list.length) return null;
+  const name = chosen || list[0];
+  const idx = list.indexOf(name);
+  if(idx===-1) return null;
+  list.splice(idx,1);
+  list.push(name);
+  return name;
+}
+
+function affecter(fnKey, when, chosen){
+  const dateStr = getDateStr();
+  const used = assignedTodaySet(dateStr);
+
+  // déterminer liste(s)
+  let name = null;
+  if(fnKey==="HC" || fnKey==="SPE"){
+    // liste unique
+    const list = ROSTERS[fnKey].unique;
+    const auto = list.find(n=>!used.has(n));
+    name = rotate(list, chosen || auto);
+    if(!name){ alert("Liste vide ou tout le monde déjà affecté aujourd'hui."); return; }
+    recordHistory({date:dateStr, nom:name, fonction:fnKey, type:when, position:getPosition(list, name)});
+  }else if(fnKey==="CM"){
+    const list = ROSTERS.CM[when];
+    const auto = list.find(n=>!used.has(n));
+    name = rotate(list, chosen || auto);
+    if(!name){ alert("Liste CM vide ou tout le monde déjà affecté aujourd'hui."); return; }
+    recordHistory({date:dateStr, nom:name, fonction:"CM", type:when, position:getPosition(list, name)});
+  }else if(fnKey==="STR" || fnKey==="CPO"){
+    const listMain = ROSTERS[fnKey][when];
+    const auto = listMain.find(n=>!used.has(n));
+    name = rotate(listMain, chosen || auto);
+    if(!name){ alert("Liste conduite vide ou tout le monde déjà affecté aujourd'hui."); return; }
+
+    // règle conduite: descendre aussi dans l'autre liste du même type
+    const otherKey = fnKey==="STR" ? "CPO" : "STR";
+    const otherList = ROSTERS[otherKey][when];
+    // assurer que la personne existe dans l'autre liste
+    if(!otherList.includes(name)) otherList.push(name);
+    moveToEnd(otherList, name);
+
+    recordHistory({date:dateStr, nom:name, fonction:fnKey, type:when, position:getPosition(listMain, name)});
+  }
+
+  saveLS(LS_KEYS.ROSTERS, ROSTERS);
+  renderFonctions();
+  renderHistory();
+}
+
+// Position (1-index) dans la liste après rotation (utile pour stats)
+function getPosition(list, name){
+  const idx = list.indexOf(name);
+  return idx===-1 ? null : (idx+1);
+}
+
+/** =========================
+ *  HISTORIQUE (local) + hook Sheets (à remplacer)
+ *  ========================= */
+function recordHistory(entry){
+  HISTORY.push(entry);
+  saveLS(LS_KEYS.HISTORY, HISTORY);
+  saveToSheets(entry); // stub à remplacer par fetch vers Apps Script
+}
+
+function saveToSheets(entry){
+  // TODO: remplace par ton endpoint Apps Script (POST)
+  // fetch("https://script.google.com/macros/s/XXX/exec",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(entry)})
+  console.log("Save to Sheets (stub):", entry);
+}
+
+function renderHistory(){
+  const box = document.getElementById("history");
+  if(!HISTORY.length){ box.innerHTML = `<div class="small">Aucun enregistrement pour l’instant.</div>`; return; }
+  // Derniers d'abord
+  const rows = [...HISTORY].reverse().slice(0,150).map(h=>{
+    return `<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:6px 0">
+      <div>${h.date}</div>
+      <div>${h.nom}</div>
+      <div class="pill">${h.fonction}</div>
+      <div class="pill" style="background:${h.type==='semaine'?'#1f3a26':'#3a211b'}">${h.type}</div>
+      <div class="small">pos: ${h.position??'—'}</div>
+    </div>`
+  }).join("");
+  box.innerHTML = rows;
+}
+
+/** =========================
+ *  CHARGEMENT ÉQUIPE depuis Google Sheets (optionnel)
+ *  - Publie ton onglet "Equipe" au format web
+ *  - Utilise l'endpoint gviz pour lire en JSONP
+ *  ========================= */
+async function loadTeamFromSheet(sheetId){
   try{
-    // append historique
-    await gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "Historique!A:E",
-      valueInputOption: "USER_ENTERED",
-      insertDataOption: "INSERT_ROWS",
-      resource: { values: histRows }
-    });
-    // write queues
-    const out=[["Fonction","File (noms séparés par des virgules)"]];
-    for (const fn of FUNCTIONS){
-      out.push([fn, (queues[fn]||[]).join(", ")]);
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(CONFIG.TEAM_SHEET_NAME)}`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const json = JSON.parse(text.substring(47, text.length - 2)); // gviz jsonp
+    const rows = json.table.rows;
+    const names = [];
+    for(const r of rows){
+      const c0 = r.c && r.c[0] ? r.c[0].v : null;
+      if(c0 && typeof c0 === "string") names.push(c0.trim());
     }
-    await gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "Queues!A1:B6",
-      valueInputOption: "USER_ENTERED",
-      resource: { values: out }
-    });
-    show("✅ Historique enregistré & files mises à jour.");
-    // reset selections
-    selected={CM:null,HC:null,STR:null,CPO:null,SPE:null};
-    renderSelectors();
+    if(names.length){
+      TEAM = [...new Set(names)].sort();
+      // S'assurer que chaque personne existe dans chaque liste
+      ensureTeamInRosters();
+      renderTeam();
+      renderFonctions();
+    }else{
+      alert("Aucun nom trouvé dans la sheet.");
+    }
   }catch(e){
-    show("Erreur d’écriture Sheets (voir console)", true, e);
+    console.warn(e);
+    alert("Échec du chargement depuis la sheet. Vérifie l'ID et la publication.");
   }
 }
 
-// ======= EVENTS =======
-document.getElementById("btnToday").onclick = setToday;
+/** =========================
+ *  EXPORT / CLEAR
+ *  ========================= */
+document.getElementById("exportJson").addEventListener("click", ()=>{
+  const payload = {
+    rosters: ROSTERS,
+    history: HISTORY
+  };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tours_role_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("clearHistory").addEventListener("click", ()=>{
+  if(confirm("Vider l’historique local ?")){
+    HISTORY = [];
+    saveLS(LS_KEYS.HISTORY, HISTORY);
+    renderHistory();
+  }
+});
+
+/** =========================
+ *  INIT
+ *  ========================= */
+(function init(){
+  // Date par défaut = aujourd’hui (en local)
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  document.getElementById("dateInput").value = `${yyyy}-${mm}-${dd}`;
+
+  // Binder sheet field & reload
+  const sheetField = document.getElementById("sheetId");
+  sheetField.value = CONFIG.SHEET_ID;
+  sheetField.addEventListener("change", (e)=>{
+    CONFIG.SHEET_ID = e.target.value.trim();
+  });
+  document.getElementById("reloadTeam").addEventListener("click", ()=>{
+    if(!CONFIG.SHEET_ID){ alert("Renseigne d’abord un SHEET_ID."); return; }
+    loadTeamFromSheet(CONFIG.SHEET_ID);
+  });
+
+  renderTeam();
+  renderFonctions();
+  renderHistory();
+})();
 </script>
 </body>
 </html>
