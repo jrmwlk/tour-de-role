@@ -3,105 +3,176 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tours de rôle – Interface</title>
+  <title>Tours de rôle – Équipe 18</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="apple-touch-icon" href="logo.png">
   <style>
-    body { margin:0; font-family: system-ui, sans-serif; background:#0f1115; color:#e9eef7; }
-    .wrap { max-width:1000px; margin:0 auto; padding:16px; }
-    h1 { font-size:22px; margin:12px 0; }
-    .member { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #262b36; padding:8px 0; }
-    .name { flex:1; }
-    button { margin:0 2px; padding:6px 10px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; }
-    .btn-semaine { background:#4CAF50; color:white; }
-    .btn-dimanche { background:#FF7043; color:white; }
-    .card { background:#161a21; border:1px solid #262b36; border-radius:10px; padding:12px; margin-top:12px; }
-    .pill { padding:4px 8px; border-radius:999px; background:#1e2430; color:#98a2b3; font-size:12px; }
-    .foot { font-size:12px; opacity:0.7; margin-top:8px; }
+    :root{
+      --bg:#0f1115;--card:#161a21;--line:#262b36;--text:#e9eef7;--muted:#98a2b3;
+      --sem:#4CAF50;--ot:#FF7043;
+    }
+    html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,'Noto Sans',sans-serif}
+    .wrap{max-width:1000px;margin:0 auto;padding:16px}
+    h1{font-size:22px;margin:12px 0 8px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
+    .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .pill{padding:4px 8px;border-radius:999px;background:#1e2430;border:1px solid var(--line);color:var(--muted);font-size:12px}
+    .member{display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed var(--line);padding:8px 0}
+    .member:last-child{border-bottom:0}
+    .name{font-weight:600}
+    button{border:0;padding:8px 10px;border-radius:8px;color:#fff;font-weight:700;cursor:pointer}
+    .b-sem{background:var(--sem)}
+    .b-ot{background:var(--ot)}
+    .ghost{background:#232a36;border:1px solid var(--line)}
+    .foot{font-size:12px;opacity:.8;margin-top:6px}
+    .err{color:#ffb4a8}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>🧭 Tours de rôle – Équipe 18</h1>
+
     <div id="members" class="card">
-      Chargement de l’équipe depuis Google Sheets…
+      <div class="pill">Affectations du jour</div>
+      <div id="membersList" style="margin-top:8px">Chargement de l’équipe…</div>
+      <div id="loadError" class="foot err"></div>
     </div>
-    <div id="retourAbs" class="card">
+
+    <div id="retourAbsCard" class="card">
       <div class="pill">Équipe – RETOUR ABS</div>
-      <div id="absButtons"></div>
+      <div id="absButtons" class="row" style="margin-top:8px"></div>
     </div>
-    <div id="history" class="card">
+
+    <div id="historyCard" class="card">
       <div class="pill">Historique (local)</div>
-      <div id="historyList"></div>
+      <div id="historyList" class="foot">(non implémenté dans cette version démo)</div>
     </div>
-    <div class="foot">Les fonctions affichées dépendent des croix dans la sheet (CM, STR, CPO, SPE, HC). Boutons OT = dimanche/jour férié.</div>
+
+    <div class="foot">Les boutons affichés dépendent des croix (X) dans ta Google Sheet. Boutons « OT » = dimanche / jour férié.</div>
   </div>
+
 <script>
-const SHEET_ID = "1tQDNxbChlSO0eSH9vdom5Vv8BtDl1Djv3vXuwqKiY_A";
-const SHEET_NAME = "EQUIPE";
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
+// === CONFIG: Published CSV URL (public) ===
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSo1KidT6LBhfeqfKVNR-kWBlxULeuRJZHLWCnph4ZCJD51zuyZSDqadW_L3qOeXkWLQ56U5XCMCfJJ/pub?gid=869605065&single=true&output=csv";
 
-let TEAM = [];
+// === State ===
+let TEAM = []; // array of {nom, CM, STR, CPO, SPE, HC}
 
-// Charger équipe depuis Sheet
-async function loadTeam(){
-  try{
-    const res = await fetch(SHEET_URL);
-    const text = await res.text();
-    const json = JSON.parse(text.substr(47).slice(0,-2));
-    const rows = json.table.rows;
-    TEAM = rows.map(r => {
-      return {
-        nom: r.c[0]?.v || "",
-        CM: !!r.c[1]?.v,
-        STR: !!r.c[2]?.v,
-        CPO: !!r.c[3]?.v,
-        SPE: !!r.c[4]?.v,
-        HC:  !!r.c[5]?.v
-      };
-    }).filter(m => m.nom);
-    renderMembers();
-    renderRetourABS();
-  }catch(e){
-    console.error(e);
-    document.getElementById("members").innerHTML = "Erreur chargement équipe.";
-  }
+// Fetch and parse CSV (keeps original order)
+async function loadTeamFromCSV() {
+  const res = await fetch(CSV_URL);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const text = await res.text();
+  return parseCSV(text);
 }
 
-function renderMembers(){
-  const box = document.getElementById("members");
-  box.innerHTML = "";
-  TEAM.forEach(m=>{
-    const div = document.createElement("div");
-    div.className = "member";
-    let btns = "";
-    if(m.CM)  btns += `<button class='btn-semaine'>CM</button><button class='btn-dimanche'>CM OT</button>`;
-    if(m.STR) btns += `<button class='btn-semaine'>STR</button><button class='btn-dimanche'>STR OT</button>`;
-    if(m.CPO) btns += `<button class='btn-semaine'>CPO</button><button class='btn-dimanche'>CPO OT</button>`;
-    if(m.SPE) btns += `<button class='btn-semaine'>SPE</button><button class='btn-dimanche'>SPE OT</button>`;
-    if(m.HC)  btns += `<button class='btn-semaine'>HC</button><button class='btn-dimanche'>HC OT</button>`;
-    div.innerHTML = `<div class='name'>${m.nom}</div><div>${btns}</div>`;
+// Simple CSV parser (handles commas, quotes minimalistically)
+function parseCSV(text) {
+  const rows = [];
+  let cur = [], cell = '', inQuotes = false;
+  for (let i=0; i<text.length; i++) {
+    const ch = text[i];
+    const next = text[i+1];
+    if (inQuotes) {
+      if (ch === '"' && next === '"') { cell += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { cell += ch; }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { cur.push(cell); cell=''; }
+      else if (ch === '\n') { cur.push(cell); rows.push(cur); cur=[]; cell=''; }
+      else { cell += ch; }
+    }
+  }
+  if (cell.length || cur.length) { cur.push(cell); rows.push(cur); }
+  return rows;
+}
+
+function truthyX(v) {
+  if (v == null) return false;
+  const s = String(v).trim().toLowerCase();
+  return s !== '' && s !== '0' && s !== 'false' && s !== 'non' && s !== 'no';
+}
+
+// Build TEAM from CSV rows using headers NOM, CM, STR, CPO, SPE, HC (case-insensitive)
+function buildTeam(rows) {
+  if (!rows.length) return [];
+  const headers = rows[0].map(h => (h||'').trim().toUpperCase());
+  const idx = (name) => headers.indexOf(name);
+  const iNom = idx('NOM');
+  const iCM = idx('CM');
+  const iSTR = idx('STR');
+  const iCPO = idx('CPO');
+  const iSPE = idx('SPE');
+  const iHC = idx('HC');
+  const out = [];
+  for (let r=1; r<rows.length; r++) {
+    const row = rows[r];
+    const nom = (row[iNom]||'').trim();
+    if (!nom) continue;
+    out.push({
+      nom,
+      CM:  truthyX(iCM>-1 ? row[iCM] : ''),
+      STR: truthyX(iSTR>-1 ? row[iSTR] : ''),
+      CPO: truthyX(iCPO>-1 ? row[iCPO] : ''),
+      SPE: truthyX(iSPE>-1 ? row[iSPE] : ''),
+      HC:  truthyX(iHC>-1 ? row[iHC] : '')
+    });
+  }
+  return out;
+}
+
+function renderMembers() {
+  const box = document.getElementById('membersList');
+  box.innerHTML = '';
+  TEAM.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'member';
+    const left = document.createElement('div');
+    left.className = 'name';
+    left.textContent = m.nom;
+    const right = document.createElement('div');
+
+    const addBtn = (label, cls) => {
+      const b = document.createElement('button');
+      b.className = cls;
+      b.textContent = label;
+      right.appendChild(b);
+    };
+    if (m.CM)  { addBtn('CM', 'b-sem'); addBtn('CM OT', 'b-ot'); }
+    if (m.STR) { addBtn('STR', 'b-sem'); addBtn('STR OT', 'b-ot'); }
+    if (m.CPO) { addBtn('CPO', 'b-sem'); addBtn('CPO OT', 'b-ot'); }
+    if (m.SPE) { addBtn('SPE', 'b-sem'); addBtn('SPE OT', 'b-ot'); }
+    if (m.HC)  { addBtn('HC', 'b-sem'); addBtn('HC OT', 'b-ot'); }
+
+    div.appendChild(left);
+    div.appendChild(right);
     box.appendChild(div);
   });
 }
 
 function renderRetourABS(){
-  const box = document.getElementById("absButtons");
-  box.innerHTML = "";
-  TEAM.forEach(m=>{
-    const btn = document.createElement("button");
-    btn.textContent = "RETOUR ABS – " + m.nom;
-    btn.className = "btn-semaine";
-    box.appendChild(btn);
+  const box = document.getElementById('absButtons');
+  box.innerHTML = '';
+  TEAM.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'ghost';
+    b.textContent = 'RETOUR ABS – ' + m.nom;
+    box.appendChild(b);
   });
 }
 
-function renderHistory(){
-  document.getElementById("historyList").innerHTML = "<i>(non implémenté dans cette version démo)</i>";
-}
-
-loadTeam();
-renderHistory();
+(async function init() {
+  try {
+    const csv = await loadTeamFromCSV();
+    TEAM = buildTeam(csv);
+    renderMembers();
+    renderRetourABS();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('loadError').textContent = 'Erreur chargement équipe. Vérifie que la feuille publiée est publique et accessible.';
+  }
+})();
 </script>
 </body>
 </html>
