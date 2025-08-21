@@ -3,388 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tours de rôle – Équipe 18</title>
-  <!-- App icon -->
+  <title>Tours de rôle – Interface</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="apple-touch-icon" href="logo.png">
   <style>
-    :root{
-      --bg:#0f1115;
-      --card:#161a21;
-      --text:#e9eef7;
-      --muted:#98a2b3;
-      --line:#262b36;
-      --sem:#4CAF50;   /* Semaine */
-      --ot:#FF7043;    /* Dimanche / OT */
-      --ghost:#232a36;
-    }
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Arial,sans-serif}
-    .wrap{max-width:1000px;margin:0 auto;padding:16px}
-    h1{font-size:22px;margin:0 0 8px}
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
-    .pill{padding:6px 10px;border-radius:999px;background:#1e2430;color:var(--muted);font-size:12px;border:1px solid var(--line)}
-    input{background:#151a22;border:1px solid var(--line);color:var(--text);padding:10px;border-radius:10px;outline:none}
-    button{border:0;padding:8px 10px;border-radius:10px;color:#fff;font-weight:600;cursor:pointer}
-    .btn-semaine{background:var(--sem)}
-    .btn-ot{background:var(--ot)}
-    .btn-ghost{background:var(--ghost);border:1px solid var(--line)}
-    .small{font-size:12px;color:var(--muted)}
-    .member{display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed var(--line);padding:8px 0}
-    .member:last-child{border-bottom:0}
-    .name{font-weight:700;min-width:240px}
-    .btns{display:flex;gap:8px;flex-wrap:wrap}
-    .foot{opacity:.8;font-size:12px;margin-top:8px}
-    .hr{height:1px;background:var(--line);margin:10px 0}
-    .tag{background:#1e2430;border:1px solid var(--line);color:#cbd5e1;padding:4px 8px;border-radius:999px;font-size:12px}
+    body { margin:0; font-family: system-ui, sans-serif; background:#0f1115; color:#e9eef7; }
+    .wrap { max-width:1000px; margin:0 auto; padding:16px; }
+    h1 { font-size:22px; margin:12px 0; }
+    .member { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #262b36; padding:8px 0; }
+    .name { flex:1; }
+    button { margin:0 2px; padding:6px 10px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; }
+    .btn-semaine { background:#4CAF50; color:white; }
+    .btn-dimanche { background:#FF7043; color:white; }
+    .card { background:#161a21; border:1px solid #262b36; border-radius:10px; padding:12px; margin-top:12px; }
+    .pill { padding:4px 8px; border-radius:999px; background:#1e2430; color:#98a2b3; font-size:12px; }
+    .foot { font-size:12px; opacity:0.7; margin-top:8px; }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🧭 Tours de rôle – Équipe 18</h1>
-
-  <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <div class="row">
-        <div class="pill">Date</div>
-        <input id="dateInput" type="date"/>
-      </div>
-      <div class="row">
-        <div class="pill">Google Sheet ID</div>
-        <input id="sheetId" placeholder="1AbCdE... (ID de la feuille)"/>
-        <button id="sync" class="btn-ghost">Synchroniser</button>
-      </div>
+  <div class="wrap">
+    <h1>🧭 Tours de rôle – Équipe 18</h1>
+    <div id="members" class="card">
+      Chargement de l’équipe depuis Google Sheets…
     </div>
-    <div class="foot">Met à jour automatiquement l’<b>ordre</b> et les <b>fonctions</b> depuis l’onglet <code>EQUIPE</code> (colonnes attendues : NOM, CM, STR, CPO, SPE, HC optionnel). Toute valeur non vide compte comme “X”.</div>
-  </div>
-
-  <div class="card" style="margin-top:12px">
-    <div class="row" style="justify-content:space-between">
-      <div class="pill">Affectations du jour</div>
-      <div class="small">1 seule fonction par personne</div>
+    <div id="retourAbs" class="card">
+      <div class="pill">Équipe – RETOUR ABS</div>
+      <div id="absButtons"></div>
     </div>
-    <div id="members"></div>
-  </div>
-
-  <div class="card" style="margin-top:12px">
-    <div class="row" style="justify-content:space-between">
+    <div id="history" class="card">
       <div class="pill">Historique (local)</div>
-      <div class="row">
-        <button id="exportJson" class="btn-ghost">Exporter JSON</button>
-        <button id="clearHistory" class="btn-ghost">Vider</button>
-      </div>
+      <div id="historyList"></div>
     </div>
-    <div id="history"></div>
+    <div class="foot">Les fonctions affichées dépendent des croix dans la sheet (CM, STR, CPO, SPE, HC). Boutons OT = dimanche/jour férié.</div>
   </div>
-
-  <div class="card" style="margin-top:12px">
-    <div class="row" style="justify-content:space-between">
-      <div class="pill">Équipe – RETOUR ABS (dernier dans toutes ses listes)</div>
-      <div class="small">Section déplacée en bas</div>
-    </div>
-    <div id="teamList" class="row" style="gap:6px;margin-top:6px"></div>
-  </div>
-
-  <div class="foot">v0.5 – Sync live avec Google Sheets, respect de l’ordre, boutons par compétences, logo favicon inclus.</div>
-</div>
-
 <script>
-/* =====================
-   CONFIG + STATE
-   ===================== */
-const CONFIG = {
-  SHEET_ID: "",          // mets ton ID ici pour qu’il soit conservé
-  TEAM_SHEET_NAME: "EQUIPE"
-};
+const SHEET_ID = "1tQDNxbChlSO0eSH9vdom5Vv8BtDl1Djv3vXuwqKiY_A";
+const SHEET_NAME = "EQUIPE";
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 
-const LS = {
-  HISTORY: "tdr_history_v05",
-  ROSTERS: "tdr_rosters_v05", // pour RETOUR ABS
-  SHEET:   "tdr_sheet_id"
-};
-
-let HISTORY = JSON.parse(localStorage.getItem(LS.HISTORY) || "[]");
-let ROSTERS = JSON.parse(localStorage.getItem(LS.ROSTERS) || JSON.stringify({
-  CM:     { semaine:[], dimanche:[] },
-  STR:    { semaine:[], dimanche:[] },
-  CPO:    { semaine:[], dimanche:[] },
-  HC:     { unique:[] },
-  SPE:    { unique:[] },
-}));
-
-// Modèle membre: { nom, roles:{CM,STR,CPO,SPE,HC} }
-// Conservé tel quel et rendu dans l’ordre reçu de la Sheet.
 let TEAM = [];
 
-/* =====================
-   HELPERS
-   ===================== */
-function saveLS(){
-  localStorage.setItem(LS.HISTORY, JSON.stringify(HISTORY));
-  localStorage.setItem(LS.ROSTERS, JSON.stringify(ROSTERS));
-}
-
-function getDateStr(){
-  const input = document.getElementById("dateInput");
-  const d = input.value ? new Date(input.value) : new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,"0");
-  const day = String(d.getDate()).padStart(2,"0");
-  return `${y}-${m}-${day}`;
-}
-
-function alreadyAssignedSet(dateStr){
-  const s = new Set();
-  for(const h of HISTORY){ if(h.date===dateStr) s.add(h.nom); }
-  return s;
-}
-
-function recordHistory(entry){
-  HISTORY.push(entry);
-  saveLS();
-  renderHistory();
-  console.log("Save to Sheets stub:", entry); // remplace par fetch vers Apps Script si besoin
-}
-
-function ensureInRosters(name){
-  const pushUnique = (arr)=>{ if(!arr.includes(name)) arr.push(name); }
-  ["CM","STR","CPO"].forEach(k=>{
-    pushUnique(ROSTERS[k].semaine);
-    pushUnique(ROSTERS[k].dimanche);
-  });
-  ["HC","SPE"].forEach(k=>{
-    pushUnique(ROSTERS[k].unique);
-  });
-}
-
-function moveToEnd(list, name){
-  const i = list.indexOf(name);
-  if(i>-1){ list.splice(i,1); list.push(name); }
-}
-
-/* =====================
-   SHEETS LOADER (GVIZ)
-   ===================== */
-async function loadFromSheet(sheetId){
+// Charger équipe depuis Sheet
+async function loadTeam(){
   try{
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(CONFIG.TEAM_SHEET_NAME)}`;
-    const res = await fetch(url);
+    const res = await fetch(SHEET_URL);
     const text = await res.text();
-    const data = JSON.parse(text.substring(47, text.length - 2));
-    const cols = data.table.cols.map(c=> (c && c.label ? c.label.toString().trim().toUpperCase() : ""));
-    const rows = data.table.rows;
-
-    const idx = {
-      NOM: cols.indexOf("NOM"),
-      CM:  cols.indexOf("CM"),
-      STR: cols.indexOf("STR"),
-      CPO: cols.indexOf("CPO"),
-      SPE: cols.indexOf("SPE"),
-      HC:  cols.indexOf("HC")
-    };
-
-    const out = [];
-    for(const r of rows){
-      const c = r.c || [];
-      const name = (c[idx.NOM] && c[idx.NOM].v ? String(c[idx.NOM].v).trim() : "");
-      if(!name) continue;
-      const val = (id)=>{
-        if(id===-1) return false;
-        const v = c[id] && (c[id].v ?? c[id].f);
-        return !!(v && String(v).trim());
+    const json = JSON.parse(text.substr(47).slice(0,-2));
+    const rows = json.table.rows;
+    TEAM = rows.map(r => {
+      return {
+        nom: r.c[0]?.v || "",
+        CM: !!r.c[1]?.v,
+        STR: !!r.c[2]?.v,
+        CPO: !!r.c[3]?.v,
+        SPE: !!r.c[4]?.v,
+        HC:  !!r.c[5]?.v
       };
-      out.push({
-        nom: name,
-        roles: {
-          CM: val(idx.CM),
-          STR: val(idx.STR),
-          CPO: val(idx.CPO),
-          SPE: val(idx.SPE),
-          HC: val(idx.HC),
-        }
-      });
-    }
-
-    TEAM = out; // ordre EXACT de la sheet
-    TEAM.forEach(m=> ensureInRosters(m.nom)); // pour RETOUR ABS
-    saveLS();
+    }).filter(m => m.nom);
     renderMembers();
-    renderTeamBottom();
+    renderRetourABS();
   }catch(e){
-    console.warn(e);
-    alert("Échec de lecture de la Sheet. Vérifie l’ID, l’onglet (EQUIPE) et la publication.");
+    console.error(e);
+    document.getElementById("members").innerHTML = "Erreur chargement équipe.";
   }
 }
 
-/* =====================
-   RENDER – MEMBERS (one row each, buttons based on roles)
-   ===================== */
 function renderMembers(){
   const box = document.getElementById("members");
   box.innerHTML = "";
-  const dateStr = getDateStr();
-  const used = alreadyAssignedSet(dateStr);
-
   TEAM.forEach(m=>{
-    const row = document.createElement("div");
-    row.className = "member";
-
-    const nameSpan = document.createElement("div");
-    nameSpan.className = "name";
-    nameSpan.textContent = m.nom;
-
-    const btns = document.createElement("div");
-    btns.className = "btns";
-
-    const addBtn = (label, fnKey, when)=>{
-      const b = document.createElement("button");
-      b.textContent = label;
-      b.className = when==="semaine" ? "btn-semaine" : "btn-ot";
-      b.addEventListener("click", ()=> assign(m.nom, fnKey, when));
-      btns.appendChild(b);
-    };
-
-    // Boutons selon rôles
-    if(m.roles.CM){ addBtn("CM", "CM", "semaine"); addBtn("CM OT", "CM", "dimanche"); }
-    if(m.roles.STR){ addBtn("STR", "STR", "semaine"); addBtn("STR OT", "STR", "dimanche"); }
-    if(m.roles.CPO){ addBtn("CPO", "CPO", "semaine"); addBtn("CPO OT", "CPO", "dimanche"); }
-    if(m.roles.HC){  addBtn("HC",  "HC",  "semaine"); addBtn("HC OT",  "HC",  "dimanche"); }
-    if(m.roles.SPE){ addBtn("SPE", "SPE", "semaine"); addBtn("SPE OT", "SPE", "dimanche"); }
-
-    // Si déjà affecté aujourd'hui, on désactive les boutons
-    if(used.has(m.nom)){
-      Array.from(btns.children).forEach(b=> b.disabled = true);
-    }
-
-    row.appendChild(nameSpan);
-    row.appendChild(btns);
-    box.appendChild(row);
+    const div = document.createElement("div");
+    div.className = "member";
+    let btns = "";
+    if(m.CM)  btns += `<button class='btn-semaine'>CM</button><button class='btn-dimanche'>CM OT</button>`;
+    if(m.STR) btns += `<button class='btn-semaine'>STR</button><button class='btn-dimanche'>STR OT</button>`;
+    if(m.CPO) btns += `<button class='btn-semaine'>CPO</button><button class='btn-dimanche'>CPO OT</button>`;
+    if(m.SPE) btns += `<button class='btn-semaine'>SPE</button><button class='btn-dimanche'>SPE OT</button>`;
+    if(m.HC)  btns += `<button class='btn-semaine'>HC</button><button class='btn-dimanche'>HC OT</button>`;
+    div.innerHTML = `<div class='name'>${m.nom}</div><div>${btns}</div>`;
+    box.appendChild(div);
   });
 }
 
-/* =====================
-   ASSIGNATION
-   ===================== */
-function assign(nom, fnKey, when){
-  const dateStr = getDateStr();
-  const used = alreadyAssignedSet(dateStr);
-  if(used.has(nom)){ alert(nom+" a déjà une fonction aujourd’hui."); return; }
-
-  // Mise à jour rosters pour rotation & RETOUR ABS
-  if(fnKey==="HC" || fnKey==="SPE"){
-    moveToEnd(ROSTERS[fnKey].unique, nom);
-  }else if(fnKey==="CM"){
-    moveToEnd(ROSTERS.CM[when], nom);
-  }else if(fnKey==="STR" || fnKey==="CPO"){
-    moveToEnd(ROSTERS[fnKey][when], nom);
-    const other = fnKey==="STR" ? "CPO" : "STR";
-    moveToEnd(ROSTERS[other][when], nom);
-  }
-  saveLS();
-
-  recordHistory({
-    date: dateStr,
-    nom,
-    fonction: fnKey,
-    type: when,
-    position: null // peut être complété si besoin
-  });
-
-  renderMembers();
-}
-
-/* =====================
-   RENDER – HISTORY & TEAM BOTTOM
-   ===================== */
-function renderHistory(){
-  const box = document.getElementById("history");
-  if(!HISTORY.length){ box.innerHTML = '<div class="small">Aucun enregistrement.</div>'; return; }
-  const rows = [...HISTORY].reverse().slice(0,200).map(h=>{
-    return `<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:6px 0">
-      <div>${h.date}</div>
-      <div>${h.nom}</div>
-      <div class="tag">${h.fonction}</div>
-      <div class="tag" style="background:${h.type==='semaine'?'#1f3a26':'#3a211b'}">${h.type}</div>
-    </div>`;
-  }).join("");
-  box.innerHTML = rows;
-}
-
-function renderTeamBottom(){
-  const box = document.getElementById("teamList");
+function renderRetourABS(){
+  const box = document.getElementById("absButtons");
   box.innerHTML = "";
   TEAM.forEach(m=>{
-    const el = document.createElement("div");
-    el.className = "tag";
-    el.innerHTML = `${m.nom} <button class="btn-ghost" style="margin-left:6px" data-name="${m.nom}">RETOUR ABS</button>`;
-    box.appendChild(el);
-  });
-  box.querySelectorAll("button").forEach(btn=>{
-    btn.addEventListener("click", (e)=>{
-      const name = e.target.getAttribute("data-name");
-      // Dernier dans toutes les listes
-      moveToEnd(ROSTERS.CM.semaine, name);
-      moveToEnd(ROSTERS.CM.dimanche, name);
-      moveToEnd(ROSTERS.STR.semaine, name);
-      moveToEnd(ROSTERS.STR.dimanche, name);
-      moveToEnd(ROSTERS.CPO.semaine, name);
-      moveToEnd(ROSTERS.CPO.dimanche, name);
-      moveToEnd(ROSTERS.HC.unique, name);
-      moveToEnd(ROSTERS.SPE.unique, name);
-      saveLS();
-    });
+    const btn = document.createElement("button");
+    btn.textContent = "RETOUR ABS – " + m.nom;
+    btn.className = "btn-semaine";
+    box.appendChild(btn);
   });
 }
 
-/* =====================
-   EXPORT / CLEAR
-   ===================== */
-document.getElementById("exportJson").addEventListener("click", ()=>{
-  const blob = new Blob([JSON.stringify({history:HISTORY, rosters:ROSTERS, team:TEAM}, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `tours_role_${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
+function renderHistory(){
+  document.getElementById("historyList").innerHTML = "<i>(non implémenté dans cette version démo)</i>";
+}
 
-document.getElementById("clearHistory").addEventListener("click", ()=>{
-  if(confirm("Vider l’historique local ?")){
-    HISTORY = [];
-    saveLS();
-    renderHistory();
-  }
-});
-
-/* =====================
-   INIT
-   ===================== */
-(function init(){
-  // Date par défaut
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth()+1).padStart(2,"0");
-  const dd = String(d.getDate()).padStart(2,"0");
-  document.getElementById("dateInput").value = `${yyyy}-${mm}-${dd}`;
-
-  // Sheet ID field
-  const field = document.getElementById("sheetId");
-  CONFIG.SHEET_ID = localStorage.getItem(LS.SHEET) || CONFIG.SHEET_ID;
-  field.value = CONFIG.SHEET_ID;
-  document.getElementById("sync").addEventListener("click", ()=>{
-    const id = field.value.trim();
-    if(!id){ alert("Entre l’ID de ta Google Sheet."); return; }
-    CONFIG.SHEET_ID = id;
-    localStorage.setItem(LS.SHEET, id);
-    loadFromSheet(id);
-  });
-
-  // Premier rendu vide
-  renderMembers();
-  renderHistory();
-  renderTeamBottom();
-})();
+loadTeam();
+renderHistory();
 </script>
 </body>
 </html>
