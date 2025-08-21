@@ -9,169 +9,306 @@
   <style>
     :root{
       --bg:#0f1115;--card:#161a21;--line:#262b36;--text:#e9eef7;--muted:#98a2b3;
-      --sem:#4CAF50;--ot:#FF7043;
+      --sem:#4CAF50;--ot:#FF7043;--ghost:#232a36;
     }
     html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,'Helvetica Neue',Arial,'Noto Sans',sans-serif}
-    .wrap{max-width:1000px;margin:0 auto;padding:16px}
-    h1{font-size:22px;margin:12px 0 8px}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    h1{font-size:22px;margin:12px 0 8px;display:flex;align-items:center;gap:10px}
+    .date{margin-left:auto;display:flex;gap:8px;align-items:center}
+    input[type=date]{background:#151a22;border:1px solid var(--line);color:#e9eef7;padding:8px 10px;border-radius:8px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
     .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .pill{padding:4px 8px;border-radius:999px;background:#1e2430;border:1px solid var(--line);color:var(--muted);font-size:12px}
+    .pill{padding:4px 8px;border-radius:999px;background:#1e2430;border:1px solid var(--line);color:#98a2b3;font-size:12px}
     .member{display:flex;align-items:center;justify-content:space-between;border-bottom:1px dashed var(--line);padding:8px 0}
     .member:last-child{border-bottom:0}
     .name{font-weight:600}
     button{border:0;padding:8px 10px;border-radius:8px;color:#fff;font-weight:700;cursor:pointer}
     .b-sem{background:var(--sem)}
     .b-ot{background:var(--ot)}
-    .ghost{background:#232a36;border:1px solid var(--line)}
+    .ghost{background:var(--ghost);border:1px solid var(--line)}
     .foot{font-size:12px;opacity:.8;margin-top:6px}
     .err{color:#ffb4a8}
+    .tag{background:#1e2430;border:1px solid var(--line);color:#cbd5e1;padding:4px 8px;border-radius:999px;font-size:12px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>🧭 Tours de rôle – Équipe 18</h1>
+    <h1>
+      🧭 Tours de rôle – Équipe 18
+      <div class="date">
+        <span class="pill">Date</span>
+        <input id="dateInput" type="date">
+        <button id="resetToday" class="ghost">Aujourd’hui</button>
+      </div>
+    </h1>
 
-    <div id="members" class="card">
+    <div id="membersCard" class="card">
       <div class="pill">Affectations du jour</div>
       <div id="membersList" style="margin-top:8px">Chargement de l’équipe…</div>
       <div id="loadError" class="foot err"></div>
     </div>
 
+    <div id="historyCard" class="card">
+      <div class="row" style="justify-content:space-between">
+        <div class="pill">Historique (local)</div>
+        <div class="row">
+          <button id="exportJson" class="ghost">Exporter JSON</button>
+          <button id="clearHistory" class="ghost">Vider</button>
+        </div>
+      </div>
+      <div id="historyList" style="margin-top:6px"></div>
+    </div>
+
     <div id="retourAbsCard" class="card">
       <div class="pill">Équipe – RETOUR ABS</div>
       <div id="absButtons" class="row" style="margin-top:8px"></div>
-    </div>
-
-    <div id="historyCard" class="card">
-      <div class="pill">Historique (local)</div>
-      <div id="historyList" class="foot">(non implémenté dans cette version démo)</div>
+      <div class="foot">Passe la personne en dernier de toutes ses listes où elle est éligible.</div>
     </div>
 
     <div class="foot">Les boutons affichés dépendent des croix (X) dans ta Google Sheet. Boutons « OT » = dimanche / jour férié.</div>
   </div>
 
 <script>
-// === CONFIG: Published CSV URL (public) ===
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSo1KidT6LBhfeqfKVNR-kWBlxULeuRJZHLWCnph4ZCJD51zuyZSDqadW_L3qOeXkWLQ56U5XCMCfJJ/pub?gid=869605065&single=true&output=csv";
+const LS = { ROSTERS: "tdr_rosters_v10", HISTORY: "tdr_history_v10" };
+let TEAM = [];
+let ROSTERS = null;
+let HISTORY = [];
 
-// === State ===
-let TEAM = []; // array of {nom, CM, STR, CPO, SPE, HC}
+// structures
+function makeDefaultRosters() { return ({ CM:{semaine:[],ot:[]}, STR:{semaine:[],ot:[]}, CPO:{semaine:[],ot:[]}, HC:{unique:[]}, SPE:{unique:[]} }); }
 
-// Fetch and parse CSV (keeps original order)
-async function loadTeamFromCSV() {
-  const res = await fetch(CSV_URL);
-  if (!res.ok) throw new Error("HTTP " + res.status);
-  const text = await res.text();
-  return parseCSV(text);
-}
+// fetch team
+async function loadTeamFromCSV() { const res = await fetch(CSV_URL); if(!res.ok) throw new Error("HTTP "+res.status); return parseCSV(await res.text()); }
 
-// Simple CSV parser (handles commas, quotes minimalistically)
+// simple CSV parser
 function parseCSV(text) {
-  const rows = [];
-  let cur = [], cell = '', inQuotes = false;
-  for (let i=0; i<text.length; i++) {
-    const ch = text[i];
-    const next = text[i+1];
-    if (inQuotes) {
-      if (ch === '"' && next === '"') { cell += '"'; i++; }
-      else if (ch === '"') { inQuotes = false; }
-      else { cell += ch; }
+  const rows=[], curInit=()=>({arr:[],cell:'',q:false}); let cur=curInit();
+  for (let i=0;i<text.length;i++){
+    const ch=text[i], nx=text[i+1];
+    if (cur.q){
+      if (ch==='\"' && nx==='\"'){ cur.cell+='\"'; i++; }
+      else if (ch==='\"'){ cur.q=false; }
+      else { cur.cell+=ch; }
     } else {
-      if (ch === '"') inQuotes = true;
-      else if (ch === ',') { cur.push(cell); cell=''; }
-      else if (ch === '\n') { cur.push(cell); rows.push(cur); cur=[]; cell=''; }
-      else { cell += ch; }
+      if (ch==='\"') cur.q=true;
+      else if (ch===','){ rows.length||cur.arr.length||cur.cell.length; cur.arr.push(cur.cell); cur.cell=''; }
+      else if (ch==='\\n'){ cur.arr.push(cur.cell); rows.push(cur.arr); cur=curInit(); }
+      else { cur.cell+=ch; }
     }
   }
-  if (cell.length || cur.length) { cur.push(cell); rows.push(cur); }
+  if (cur.cell.length || cur.arr.length){ cur.arr.push(cur.cell); rows.push(cur.arr); }
   return rows;
 }
+function truthyX(v){ if(v==null) return false; const s=String(v).trim().toLowerCase(); return s!=='' && s!=='0' && s!=='false' && s!=='non' && s!=='no' && s!=='x '; }
 
-function truthyX(v) {
-  if (v == null) return false;
-  const s = String(v).trim().toLowerCase();
-  return s !== '' && s !== '0' && s !== 'false' && s !== 'non' && s !== 'no';
-}
-
-// Build TEAM from CSV rows using headers NOM, CM, STR, CPO, SPE, HC (case-insensitive)
-function buildTeam(rows) {
-  if (!rows.length) return [];
-  const headers = rows[0].map(h => (h||'').trim().toUpperCase());
-  const idx = (name) => headers.indexOf(name);
-  const iNom = idx('NOM');
-  const iCM = idx('CM');
-  const iSTR = idx('STR');
-  const iCPO = idx('CPO');
-  const iSPE = idx('SPE');
-  const iHC = idx('HC');
-  const out = [];
-  for (let r=1; r<rows.length; r++) {
-    const row = rows[r];
-    const nom = (row[iNom]||'').trim();
-    if (!nom) continue;
+// build team from headers
+function buildTeam(rows){
+  if(!rows.length) return [];
+  const H = rows[0].map(h => (h||'').trim().toUpperCase());
+  const idx = n => H.indexOf(n);
+  const iNom=idx('NOM'), iCM=idx('CM'), iSTR=idx('STR'), iCPO=idx('CPO'), iSPE=idx('SPE'), iHC=idx('HC');
+  const out=[];
+  for (let r=1;r<rows.length;r++){
+    const row=rows[r];
+    const nom=(row[iNom]||'').trim();
+    if(!nom) continue;
     out.push({
       nom,
-      CM:  truthyX(iCM>-1 ? row[iCM] : ''),
+      CM:  truthyX(iCM>-1 ? row[iCM]  : ''),
       STR: truthyX(iSTR>-1 ? row[iSTR] : ''),
       CPO: truthyX(iCPO>-1 ? row[iCPO] : ''),
       SPE: truthyX(iSPE>-1 ? row[iSPE] : ''),
-      HC:  truthyX(iHC>-1 ? row[iHC] : '')
+      HC:  truthyX(iHC>-1 ? row[iHC]  : '')
     });
   }
   return out;
 }
 
-function renderMembers() {
-  const box = document.getElementById('membersList');
-  box.innerHTML = '';
+function initRostersFromTeam(){
+  const r = makeDefaultRosters();
   TEAM.forEach(m => {
-    const div = document.createElement('div');
-    div.className = 'member';
-    const left = document.createElement('div');
-    left.className = 'name';
-    left.textContent = m.nom;
-    const right = document.createElement('div');
+    if (m.CM){ r.CM.semaine.push(m.nom); r.CM.ot.push(m.nom); }
+    if (m.STR){ r.STR.semaine.push(m.nom); r.STR.ot.push(m.nom); }
+    if (m.CPO){ r.CPO.semaine.push(m.nom); r.CPO.ot.push(m.nom); }
+    if (m.HC) r.HC.unique.push(m.nom);
+    if (m.SPE) r.SPE.unique.push(m.nom);
+  });
+  return r;
+}
+function reconcileRosters(){
+  const ensure=(list,set)=>{
+    for(let i=list.length-1;i>=0;i--) if(!set.has(list[i])) list.splice(i,1);
+    TEAM.forEach(m=>{ if(set.has(m.nom) && !list.includes(m.nom)) list.push(m.nom); });
+  };
+  const elig=key=>new Set(TEAM.filter(m=>m[key]).map(m=>m.nom));
+  ensure(ROSTERS.CM.semaine, elig('CM'));
+  ensure(ROSTERS.CM.ot,      elig('CM'));
+  ensure(ROSTERS.STR.semaine, elig('STR'));
+  ensure(ROSTERS.STR.ot,      elig('STR'));
+  ensure(ROSTERS.CPO.semaine, elig('CPO'));
+  ensure(ROSTERS.CPO.ot,      elig('CPO'));
+  ensure(ROSTERS.HC.unique,   elig('HC'));
+  ensure(ROSTERS.SPE.unique,  elig('SPE'));
+}
 
-    const addBtn = (label, cls) => {
-      const b = document.createElement('button');
-      b.className = cls;
-      b.textContent = label;
+// rendering
+function renderMembers(){
+  const box=document.getElementById('membersList');
+  box.innerHTML='';
+  TEAM.forEach(m=>{
+    const div=document.createElement('div');
+    div.className='member';
+    const left=document.createElement('div');
+    left.className='name';
+    left.textContent=m.nom;
+    const right=document.createElement('div');
+
+    const add=(label,cls,key,when)=>{
+      const b=document.createElement('button');
+      b.className=cls;
+      b.textContent=label;
+      b.addEventListener('click',()=>affecter(m.nom,key,when));
       right.appendChild(b);
     };
-    if (m.CM)  { addBtn('CM', 'b-sem'); addBtn('CM OT', 'b-ot'); }
-    if (m.STR) { addBtn('STR', 'b-sem'); addBtn('STR OT', 'b-ot'); }
-    if (m.CPO) { addBtn('CPO', 'b-sem'); addBtn('CPO OT', 'b-ot'); }
-    if (m.SPE) { addBtn('SPE', 'b-sem'); addBtn('SPE OT', 'b-ot'); }
-    if (m.HC)  { addBtn('HC', 'b-sem'); addBtn('HC OT', 'b-ot'); }
+    if(m.CM){ add('CM','b-sem','CM','semaine'); add('CM OT','b-ot','CM','ot'); }
+    if(m.STR){ add('STR','b-sem','STR','semaine'); add('STR OT','b-ot','STR','ot'); }
+    if(m.CPO){ add('CPO','b-sem','CPO','semaine'); add('CPO OT','b-ot','CPO','ot'); }
+    if(m.SPE){ add('SPE','b-sem','SPE','unique'); add('SPE OT','b-ot','SPE','unique'); }
+    if(m.HC){ add('HC','b-sem','HC','unique'); add('HC OT','b-ot','HC','unique'); }
 
     div.appendChild(left);
     div.appendChild(right);
     box.appendChild(div);
   });
 }
-
 function renderRetourABS(){
-  const box = document.getElementById('absButtons');
-  box.innerHTML = '';
-  TEAM.forEach(m => {
-    const b = document.createElement('button');
-    b.className = 'ghost';
-    b.textContent = 'RETOUR ABS – ' + m.nom;
+  const box=document.getElementById('absButtons');
+  box.innerHTML='';
+  TEAM.forEach(m=>{
+    const b=document.createElement('button');
+    b.className='ghost';
+    b.textContent='RETOUR ABS – '+m.nom;
+    b.addEventListener('click',()=>retourABS(m.nom));
     box.appendChild(b);
   });
 }
+function renderHistory(){
+  const box=document.getElementById('historyList');
+  if(!HISTORY.length){ box.innerHTML="<span class='foot'>(vide)</span>"; return; }
+  const rows=[...HISTORY].reverse().slice(0,200).map(h=>`
+    <div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0">
+      <div>${h.date}</div>
+      <div>${h.nom}</div>
+      <div class="tag">${h.fonction}</div>
+      <div class="tag">${h.type}</div>
+      <div class="foot">pos: ${h.position ?? '—'}</div>
+    </div>
+  `).join('');
+  box.innerHTML=rows;
+}
 
-(async function init() {
-  try {
+// utils
+function todayISO(){ const d=new Date(); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+function getDateStr(){ const el=document.getElementById('dateInput'); return el.value||todayISO(); }
+function assignedTodaySet(dateStr){ const s=new Set(); for(const h of HISTORY) if(h.date===dateStr) s.add(h.nom); return s; }
+function moveToEnd(list,name){ const i=list.indexOf(name); if(i>-1){ list.splice(i,1); list.push(name); } }
+function rotate(list, chosen, usedSet){
+  if(!list.length) return null;
+  const pick = (chosen && list.includes(chosen)) ? chosen : list.find(n=>!usedSet.has(n));
+  if(!pick) return null;
+  moveToEnd(list, pick);
+  return pick;
+}
+function positionOf(list,name){ const i=list.indexOf(name); return i===-1?null:i+1; }
+
+// affectation
+function affecter(nom,key,when){
+  const dateStr=getDateStr();
+  const used=assignedTodaySet(dateStr);
+  if(used.has(nom)){ alert(nom+" a déjà une fonction aujourd’hui."); return; }
+
+  let listMain, otherList, chosen;
+  if(key==='HC' || key==='SPE'){
+    listMain = ROSTERS[key].unique;
+    chosen = rotate(listMain, nom, used);
+    if(!chosen){ alert("Liste vide ou tout le monde affecté."); return; }
+    HISTORY.push({date:dateStr, nom:chosen, fonction:key, type:(when==='unique'?'semaine':when), position:positionOf(listMain, chosen)});
+  } else if(key==='CM'){
+    listMain = ROSTERS.CM[when];
+    chosen = rotate(listMain, nom, used);
+    if(!chosen){ alert("Liste CM vide ou tout le monde affecté."); return; }
+    HISTORY.push({date:dateStr, nom:chosen, fonction:'CM', type:when, position:positionOf(listMain, chosen)});
+  } else if(key==='STR' || key==='CPO'){
+    listMain = ROSTERS[key][when];
+    chosen = rotate(listMain, nom, used);
+    if(!chosen){ alert("Liste conduite vide ou tout le monde affecté."); return; }
+    const otherKey = (key==='STR') ? 'CPO' : 'STR';
+    otherList = ROSTERS[otherKey][when];
+    if(!otherList.includes(chosen)) otherList.push(chosen);
+    moveToEnd(otherList, chosen);
+    HISTORY.push({date:dateStr, nom:chosen, fonction:key, type:when, position:positionOf(listMain, chosen)});
+  }
+  persist();
+  renderHistory();
+}
+
+// retour abs
+function retourABS(nom){
+  const elig=key=>new Set(TEAM.filter(m=>m[key]).map(m=>m.nom));
+  const mv=(list,set)=>{ if(set.has(nom)) moveToEnd(list, nom); };
+  mv(ROSTERS.CM.semaine, elig('CM'));
+  mv(ROSTERS.CM.ot,      elig('CM'));
+  mv(ROSTERS.STR.semaine, elig('STR'));
+  mv(ROSTERS.STR.ot,      elig('STR'));
+  mv(ROSTERS.CPO.semaine, elig('CPO'));
+  mv(ROSTERS.CPO.ot,      elig('CPO'));
+  mv(ROSTERS.HC.unique,   elig('HC'));
+  mv(ROSTERS.SPE.unique,  elig('SPE'));
+  persist();
+}
+
+// persistence
+function persist(){ localStorage.setItem(LS.ROSTERS, JSON.stringify(ROSTERS)); localStorage.setItem(LS.HISTORY, JSON.stringify(HISTORY)); }
+function loadPersist(){ try{ const r=localStorage.getItem(LS.ROSTERS); const h=localStorage.getItem(LS.HISTORY); ROSTERS=r?JSON.parse(r):null; HISTORY=h?JSON.parse(h):[]; }catch(e){ ROSTERS=null; HISTORY=[]; } }
+
+// date UI
+function initDate(){ const el=document.getElementById('dateInput'); el.value=todayISO(); document.getElementById('resetToday').addEventListener('click',()=>el.value=todayISO()); }
+
+// export/clear
+document.addEventListener('click', (e)=>{
+  if(e.target && e.target.id==='exportJson'){
+    const payload = { rosters: ROSTERS, history: HISTORY };
+    const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'tours_role_export.json'; a.click();
+    URL.revokeObjectURL(url);
+  }
+  if(e.target && e.target.id==='clearHistory'){
+    if(confirm('Vider l’historique local ?')){ HISTORY=[]; persist(); renderHistory(); }
+  }
+});
+
+// init
+(async function init(){
+  initDate();
+  loadPersist();
+  try{
     const csv = await loadTeamFromCSV();
     TEAM = buildTeam(csv);
+    if(!ROSTERS) ROSTERS = initRostersFromTeam();
+    reconcileRosters();
+    persist();
     renderMembers();
     renderRetourABS();
-  } catch (e) {
+  }catch(e){
     console.error(e);
-    document.getElementById('loadError').textContent = 'Erreur chargement équipe. Vérifie que la feuille publiée est publique et accessible.';
+    document.getElementById('loadError').textContent = 'Erreur chargement équipe. Vérifie la publication CSV.';
+    TEAM = [];
+    ROSTERS = makeDefaultRosters();
   }
+  renderHistory();
 })();
 </script>
 </body>
