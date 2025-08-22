@@ -2,101 +2,58 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Tour de rôle — Équipe</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tour de rôle - Debug</title>
   <style>
-    body { background:#111; color:#eee; font-family:-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; margin:0; }
-    h2 { margin:16px; }
-    #team { padding: 0 16px 24px; }
-    .person { margin:10px 0; padding:10px; border:1px solid #333; border-radius:10px; background:#151515; }
-    .person b { display:inline-block; min-width:220px; }
-    button { margin:4px 6px 0 0; padding:6px 10px; border-radius:8px; border:0; cursor:pointer; }
-    .fn-btn { background:#2f2f2f; color:#fff; }
-    .fn-btn:hover { background:#444; }
-    .abs-btn { background:#7a1020; color:#fff; }
-    .muted { color:#bbb; }
+    body { background:#111; color:#eee; font-family:sans-serif; padding:20px; }
+    input, button { padding:6px; margin:4px; }
+    #log { white-space:pre; background:#222; padding:10px; border-radius:6px; margin-top:10px; }
   </style>
 </head>
 <body>
-  <h2>Équipe — Tour de rôle</h2>
-  <div id="team">Chargement…</div>
+  <h1>Debug — Tour de rôle</h1>
 
-<script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyylZcJzhDxkGpx-XuVjBkobtdD3Ofs4tOTlY2yK93tF-CatVs2v2SaM25En_z86cSK6Q/exec";
+  <label>URL WebApp : <input id="url" style="width:70%"></label>
+  <button onclick="saveUrl()">Sauver</button>
+  <br>
+  <button onclick="testApi('ping')">Tester Ping</button>
+  <button onclick="testApi('equipe')">Tester Équipe</button>
+  <button onclick="testApi('tours')">Tester Tours</button>
 
-// ---- JSONP util ----
-function jsonp(url, cb){
-  const name = "__cb_" + Math.random().toString(36).slice(2);
-  const s = document.createElement('script');
-  const sep = url.includes('?') ? '&' : '?';
-  s.src = url + sep + 'callback=' + name;
-  s.onerror = () => { try { cb(new Error('JSONP load error')); } finally { delete window[name]; s.remove(); } };
-  window[name] = (data) => { try { cb(null, data); } finally { delete window[name]; s.remove(); } };
-  document.body.appendChild(s);
-}
+  <h2>Résultat</h2>
+  <div id="log"></div>
 
-// ---- API via JSONP ----
-function apiEquipe() { return new Promise((res, rej) => jsonp(WEBAPP_URL + "?action=equipe", (e,d)=> e?rej(e):res(d))); }
-function apiTours()  { return new Promise((res, rej) => jsonp(WEBAPP_URL + "?action=tours",  (e,d)=> e?rej(e):res(d))); }
-function apiAssign(nom, fn) { return new Promise((res, rej) => jsonp(WEBAPP_URL + "?action=assign&nom="+encodeURIComponent(nom)+"&fn="+encodeURIComponent(fn), (e,d)=> e?rej(e):res(d))); }
-function apiAbs(nom)       { return new Promise((res, rej) => jsonp(WEBAPP_URL + "?action=abs&nom="+encodeURIComponent(nom), (e,d)=> e?rej(e):res(d))); }
+  <script>
+    const urlInput = document.getElementById('url');
+    const logDiv = document.getElementById('log');
 
-// ---- UI ----
-async function render(){
-  const div = document.getElementById('team');
-  div.textContent = "Chargement…";
-  try {
-    const equipe = await apiEquipe();   // {people, headers}
-    const toursR = await apiTours();    // {tours: {FN:[...]}}
-    const tours = (toursR && toursR.tours) ? toursR.tours : {};
-
-    div.innerHTML = "";
-    const list = (equipe && Array.isArray(equipe.people)) ? equipe.people : [];
-    if(!list.length) {
-      div.innerHTML = "<p class='muted'>Aucun membre dans 'Équipe'.</p>";
-      return;
+    function saveUrl() {
+      localStorage.setItem('webapp_url', urlInput.value.trim());
+      log("✅ URL sauvegardée");
     }
 
-    list.forEach(p=>{
-      const box = document.createElement('div');
-      box.className = 'person';
+    function getUrl() {
+      return localStorage.getItem('webapp_url') || '';
+    }
 
-      const title = document.createElement('b');
-      title.textContent = p.nom || "(sans nom)";
-      box.appendChild(title);
+    function log(txt) {
+      logDiv.textContent = txt;
+    }
 
-      const flags = p.flags || {};
-      const fns = Object.keys(flags).filter(k => String(flags[k]||'').trim() !== '');
-      fns.forEach(fn=>{
-        const btn = document.createElement('button');
-        btn.className = 'fn-btn';
-        btn.onclick = async () => { await apiAssign(p.nom, fn); render(); };
+    async function testApi(action) {
+      const base = getUrl();
+      if (!base) { log("❌ Pas d’URL configurée"); return; }
 
-        let label = fn;
-        const listFn = tours[fn] || [];
-        if (String(flags[fn]||'') === 'X' && Array.isArray(listFn)) {
-          const idx = listFn.indexOf(p.nom);
-          if (idx >= 0) label = `${fn} (#${idx+1})`;
-        }
-        btn.textContent = label;
-        box.appendChild(btn);
-      });
+      const cb = "cb" + Date.now();
+      window[cb] = data => { log("Réponse :\n" + JSON.stringify(data,null,2)); };
 
-      const abs = document.createElement('button');
-      abs.className = 'abs-btn';
-      abs.textContent = 'RETOUR ABS';
-      abs.onclick = async () => { await apiAbs(p.nom); render(); };
-      box.appendChild(abs);
+      const s = document.createElement('script');
+      s.src = `${base}?action=${action}&callback=${cb}`;
+      s.onerror = () => log("❌ Erreur de chargement (peut-être mauvaise URL ou accès non public)");
+      document.body.appendChild(s);
+    }
 
-      div.appendChild(box);
-    });
-  } catch(err) {
-    console.error(err);
-    div.innerHTML = "<p style='color:#f66'>Erreur de chargement. Vérifie que l'URL WebApp est bien déployée en accès public.</p>";
-  }
-}
-
-render();
-</script>
+    // init
+    urlInput.value = getUrl();
+  </script>
 </body>
 </html>
