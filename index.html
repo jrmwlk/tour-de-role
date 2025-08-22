@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Tour de rôle — Équipe</title>
+  <title>Tour de rôle — Équipe (debug)</title>
   <style>
     body { background:#111; color:#eee; font-family:sans-serif; }
     .person { margin:6px; padding:6px; border:1px solid #444; border-radius:8px; }
@@ -10,24 +10,53 @@
     .fn-btn { background:#333; color:#fff; border:none; border-radius:4px; cursor:pointer; }
     .fn-btn:hover { background:#555; }
     .abs-btn { background:#800; color:#fff; border:none; padding:4px 8px; border-radius:4px; }
+    .debug { position:fixed; right:8px; top:8px; width:38%; max-width:520px; background:#181818; border:1px solid #333; border-radius:8px; padding:8px; }
+    .debug pre { white-space:pre-wrap; font-size:12px; background:#0e0e0e; padding:8px; border-radius:6px; max-height:280px; overflow:auto; }
+    .muted { color:#bbb; font-size:12px; }
   </style>
 </head>
 <body>
   <h2>Équipe — Tour de rôle</h2>
   <div id="team">Chargement…</div>
+  <div class="debug">
+    <div class="muted">Debug</div>
+    <div><b>WebApp</b>: <span id="webappUrl"></span></div>
+    <div><b>Status</b>: <span id="status">init…</span></div>
+    <details open>
+      <summary>Dernières réponses</summary>
+      <div><b>/equipe</b><pre id="dbgEquipe"></pre></div>
+      <div><b>/tours</b><pre id="dbgTours"></pre></div>
+      <div><b>Erreur</b><pre id="dbgErr"></pre></div>
+    </details>
+  </div>
 
 <script>
-const SHEET_JSON = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSo1KidT6LBhfeqfKVNR-kWBlxULeuRJZHLWCnph4ZCJD51zuyZSDqadW_L3qOeXkWLQ56U5XCMCfJJ/gviz/tq?tqx=out:json";
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzqk_6Tuu2aSEHYbD6HmAMEZZ_PZe5fJnpiV2Aw3eTH9z5uC4Rxae7a6-B1meUPDrqm7A/exec";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzsrAVc51JxqN7PKcfYQGYQlXh6VmTr99iPQ_HfI3pZaFaq1dfchriSewDGXyuwdPGag/exec";
+document.getElementById('webappUrl').textContent = WEBAPP_URL;
+
+const $ = (id)=>document.getElementById(id);
+function setStatus(s){ $('status').textContent = s; }
+
+async function fetchJSON(url){
+  const r = await fetch(url, {cache:'no-store'});
+  const t = await r.text();
+  try { return { ok:true, json: JSON.parse(t), raw: t }; }
+  catch(e){ return { ok:false, json:null, raw: t, error: String(e) }; }
+}
 
 async function fetchEquipe(){
-  const res = await fetch(WEBAPP_URL+"?action=equipe");
-  return await res.json();
+  const res = await fetchJSON(WEBAPP_URL+"?action=equipe");
+  $('dbgEquipe').textContent = res.raw || '';
+  if(!res.ok) throw new Error("JSON parse équipe: "+res.error);
+  return res.json;
 }
 async function fetchTours(){
-  const res = await fetch(WEBAPP_URL+"?action=tours");
-  return await res.json();
+  const res = await fetchJSON(WEBAPP_URL+"?action=tours");
+  $('dbgTours').textContent = res.raw || '';
+  if(!res.ok) throw new Error("JSON parse tours: "+res.error);
+  return res.json;
 }
+
 async function assign(nom,fn){
   await fetch(WEBAPP_URL+`?action=assign&nom=${encodeURIComponent(nom)}&fn=${encodeURIComponent(fn)}`);
   render();
@@ -38,37 +67,69 @@ async function retourAbs(nom){
 }
 
 async function render(){
-  const equipe = await fetchEquipe();
-  const tours = await fetchTours();
-  const div=document.getElementById('team');
-  div.innerHTML='';
-  equipe.equipe.forEach(p=>{
-    const box=document.createElement('div');
-    box.className='person';
-    box.innerHTML=`<b>${p.nom}</b> `;
-    for(const fn in p.fonctions){
-      const val=p.fonctions[fn];
-      const btn=document.createElement('button');
-      btn.className='fn-btn';
-      btn.textContent=fn;
-      btn.onclick=()=>assign(p.nom,fn);
+  const div = document.getElementById('team');
+  div.innerHTML = "Chargement…";
+  setStatus('chargement…');
 
-      if(val==='X' && tours[fn]){
-        let rangObj=tours[fn].find(x=>x.nom===p.nom);
-        if(rangObj){
-          btn.textContent=`${fn} (#${rangObj.rang})`;
-        }
-      }
-      box.appendChild(btn);
+  try{
+    const equipe = await fetchEquipe();     // {people, headers}
+    const toursResp = await fetchTours();   // {tours:{...}}
+    const tourMap = (toursResp && toursResp.tours) ? toursResp.tours : {};
+
+    div.innerHTML = "";
+    if(!equipe || !Array.isArray(equipe.people)){
+      div.innerHTML = "<p style='color:#f66'>Erreur : format équipe inattendu.</p>";
+      $('dbgErr').textContent = 'equipe.people manquant';
+      setStatus('erreur');
+      return;
     }
-    const abs=document.createElement('button');
-    abs.className='abs-btn';
-    abs.textContent='RETOUR ABS';
-    abs.onclick=()=>retourAbs(p.nom);
-    box.appendChild(abs);
 
-    div.appendChild(box);
-  });
+    equipe.people.forEach(p=>{
+      const box = document.createElement('div');
+      box.className = 'person';
+      box.innerHTML = `<b>${p.nom}</b> `;
+
+      const flags = p.flags || {};
+      const fns = Object.keys(flags).filter(k => String(flags[k]||'').trim() !== '');
+      if(!fns.length){
+        const i = document.createElement('i');
+        i.textContent = '— aucune fonction —';
+        box.appendChild(i);
+      }
+      fns.forEach(fn=>{
+        const btn = document.createElement('button');
+        btn.className = 'fn-btn';
+        btn.onclick = ()=>assign(p.nom, fn);
+
+        let label = fn;
+        const list = tourMap[fn] || [];
+        if (String(flags[fn]||'') === 'X' && Array.isArray(list)) {
+          const idx = list.indexOf(p.nom);
+          if (idx >= 0) label = `${fn} (#${idx+1})`;
+        }
+        btn.textContent = label;
+        box.appendChild(btn);
+      });
+
+      const abs = document.createElement('button');
+      abs.className = 'abs-btn';
+      abs.textContent = 'RETOUR ABS';
+      abs.onclick = ()=>retourAbs(p.nom);
+      box.appendChild(abs);
+
+      div.appendChild(box);
+    });
+
+    if(!equipe.people.length){
+      div.innerHTML = "<p>Aucun membre dans 'Équipe'.</p>";
+    }
+    setStatus('ok');
+  }catch(err){
+    console.error(err);
+    $('dbgErr').textContent = String(err && err.stack || err);
+    div.innerHTML = "<p style='color:#f66'>Erreur de chargement. Voir debug à droite.</p>";
+    setStatus('erreur');
+  }
 }
 
 render();
