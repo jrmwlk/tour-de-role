@@ -1,59 +1,125 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Tour de rôle - Debug</title>
+  <meta charset="UTF-8" />
+  <title>Équipe — Tour de rôle</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { background:#111; color:#eee; font-family:sans-serif; padding:20px; }
-    input, button { padding:6px; margin:4px; }
-    #log { white-space:pre; background:#222; padding:10px; border-radius:6px; margin-top:10px; }
+    body { background:#111; color:#eee; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; }
+    h1 { margin:0; font-size:20px; }
+    .actions { display:flex; gap:8px; align-items:center; }
+    button { background:#333; color:#eee; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; }
+    button:hover { background:#444; }
+    .wrap { padding: 8px 16px 24px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+    .card { background:#1a1a1a; border:1px solid #222; border-radius:12px; padding:12px; }
+    .name { font-weight:700; margin-bottom:8px; }
+    .fn-row { display:flex; flex-wrap:wrap; gap:6px; }
+    .fn-btn { background:#2d2d2d; color:#eee; border:none; border-radius:8px; padding:6px 8px; cursor:pointer; font-size:13px; }
+    .fn-btn:hover { background:#3a3a3a; }
+    .abs-btn { background:#7c2d2d; }
+    .rank { display:inline-block; font-size:11px; background:#0b5; color:#041; border-radius:999px; padding:2px 6px; margin-left:6px; }
+    .footer { color:#aaa; font-size:12px; padding:10px 16px; border-top:1px solid #222; }
+    .warn { color:#f66; padding:8px 12px; }
   </style>
 </head>
 <body>
-  <h1>Debug — Tour de rôle</h1>
+  <header>
+    <h1>Équipe — Tour de rôle</h1>
+    <div class="actions">
+      <button id="urlBtn">URL WebApp</button>
+      <button id="refreshBtn">Rafraîchir</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <div id="warn" class="warn" style="display:none"></div>
+    <div id="team" class="grid"></div>
+  </div>
+  <div class="footer">Si la page reste vide : vérifie l’URL WebApp et que le déploiement est en accès public.</div>
 
-  <label>URL WebApp : <input id="url" style="width:70%"></label>
-  <button onclick="saveUrl()">Sauver</button>
-  <br>
-  <button onclick="testApi('ping')">Tester Ping</button>
-  <button onclick="testApi('equipe')">Tester Équipe</button>
-  <button onclick="testApi('tours')">Tester Tours</button>
+<script>
+const LS_KEY = 'webapp_url';
 
-  <h2>Résultat</h2>
-  <div id="log"></div>
+function getURL(){
+  return localStorage.getItem(LS_KEY) || '';
+}
+function setURL(u){
+  if(u) localStorage.setItem(LS_KEY, u);
+}
+function promptURL(){
+  const cur = getURL();
+  const v = prompt('Colle l’URL WebApp (celle qui finit par /exec) :', cur || '');
+  if(v) { setURL(v.trim()); render(); }
+}
 
-  <script>
-    const urlInput = document.getElementById('url');
-    const logDiv = document.getElementById('log');
+async function fetchJSONP(action, params={}){
+  return new Promise((resolve,reject)=>{
+    const base=getURL();
+    if(!base){ reject(new Error('Aucune URL WebApp configurée')); return; }
+    const cb='cb'+Date.now()+Math.floor(Math.random()*10000);
+    window[cb]=(data)=>{ resolve(data); cleanup(); };
+    const cleanup=()=>{ try{ delete window[cb]; script.remove(); }catch(_){} };
+    const usp = new URLSearchParams({...params, action, callback:cb});
+    const script=document.createElement('script');
+    script.src = base + '?' + usp.toString();
+    script.onerror = ()=>{ reject(new Error('Erreur de chargement JSONP (URL ou droits)')); cleanup(); };
+    document.body.appendChild(script);
+  });
+}
 
-    function saveUrl() {
-      localStorage.setItem('webapp_url', urlInput.value.trim());
-      log("✅ URL sauvegardée");
+async function render(){
+  const div=document.getElementById('team');
+  const warn=document.getElementById('warn');
+  div.innerHTML='';
+  warn.style.display='none';
+  try{
+    const equipe = await fetchJSONP('equipe');
+    const tours  = await fetchJSONP('tours');
+    const map = tours; // { STR:[...], ... }
+    if(!equipe.people || !equipe.people.length){
+      warn.textContent = 'Aucun membre trouvé (onglet Equipe vide ?)'; warn.style.display='block'; return;
     }
+    equipe.people.forEach(p=>{
+      const box=document.createElement('div'); box.className='card';
+      const title=document.createElement('div'); title.className='name'; title.textContent=p.nom; box.appendChild(title);
 
-    function getUrl() {
-      return localStorage.getItem('webapp_url') || '';
-    }
+      const row=document.createElement('div'); row.className='fn-row';
+      Object.keys(p.flags).forEach(fn=>{
+        const flag=p.flags[fn];
+        if(flag!=='X' && flag!=='N') return; // boutons seulement pour fonctions possédées
+        const btn=document.createElement('button'); btn.className='fn-btn'; btn.textContent=fn;
+        // Affiche rang pour fonctions rotatives
+        const list=(map&&map[fn])? map[fn] : [];
+        if(flag==='X' && Array.isArray(list)){
+          const idx = list.indexOf(p.nom);
+          if(idx>-1){ const r=document.createElement('span'); r.className='rank'; r.textContent='#'+(idx+1); btn.appendChild(r); }
+        }
+        btn.onclick= async ()=>{
+          try{ await fetchJSONP('assign',{ nom:p.nom, fn }); render(); }catch(e){ alert('Erreur assign: '+e.message); }
+        };
+        row.appendChild(btn);
+      });
+      // Retour ABS
+      const abs=document.createElement('button'); abs.className='fn-btn abs-btn'; abs.textContent='RETOUR ABS';
+      abs.onclick= async ()=>{ try{ await fetchJSONP('abs',{ nom:p.nom }); render(); }catch(e){ alert('Erreur ABS: '+e.message); } };
+      row.appendChild(abs);
 
-    function log(txt) {
-      logDiv.textContent = txt;
-    }
+      box.appendChild(row);
+      div.appendChild(box);
+    });
+  }catch(err){
+    warn.textContent='Erreur de chargement. Vérifie que l’URL WebApp est bien déployée en accès public. ('+err.message+')';
+    warn.style.display='block';
+    console.error(err);
+  }
+}
 
-    async function testApi(action) {
-      const base = getUrl();
-      if (!base) { log("❌ Pas d’URL configurée"); return; }
+document.getElementById('urlBtn').onclick=promptURL;
+document.getElementById('refreshBtn').onclick=render;
 
-      const cb = "cb" + Date.now();
-      window[cb] = data => { log("Réponse :\n" + JSON.stringify(data,null,2)); };
-
-      const s = document.createElement('script');
-      s.src = `${base}?action=${action}&callback=${cb}`;
-      s.onerror = () => log("❌ Erreur de chargement (peut-être mauvaise URL ou accès non public)");
-      document.body.appendChild(s);
-    }
-
-    // init
-    urlInput.value = getUrl();
-  </script>
+// boot
+if(!getURL()) promptURL(); else render();
+</script>
 </body>
 </html>
