@@ -1,219 +1,78 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
   <title>Tour de rôle — Équipe</title>
   <style>
-    :root {
-      --bg:#0b0b0f; --card:#14141b; --muted:#7c7c8a;
-      --text:#e9e9ef; --accent:#4ea8de; --accent2:#22c55e; --error:#ef4444;
-      --chip:#1c1c26;
-    }
-    html,body {
-      margin:0; padding:0;
-      background:var(--bg); color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif
-    }
-    header {
-      display:flex; align-items:center; justify-content:space-between;
-      padding:16px 20px;
-      border-bottom:1px solid #1f1f29;
-      background:linear-gradient(180deg,#15151c,#0b0b0f)
-    }
-    h1 {font-size:18px;margin:0;font-weight:700;letter-spacing:.3px}
-    main {max-width:980px;margin:24px auto;padding:0 16px}
-    .card {
-      background:var(--card); border-radius:12px;
-      padding:10px 12px; margin-bottom:10px
-    }
-    .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap }
-    .name {font-weight:600; padding:6px 10px; background:var(--chip); border-radius:999px}
-    .muted { color:var(--muted); font-size:12px }
-    .fn { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-left:auto }
-    .fn button {
-      background:var(--chip); border:1px solid #2a2a36;
-      border-radius:999px; padding:6px 10px;
-      color:var(--text); cursor:pointer; font-size:12px
-    }
-    .fn button.assign { border-color: #2a3742 }
-    .fn button.assign:hover { outline:1px solid var(--accent) }
-    .fn .badge { font-weight:600; }
-    .abs { margin-left:auto }
-    .abs button { background:#2a1f22; border:1px solid #3a2a2e; color:#ffd9df }
-    .loader { text-align:center; margin-top:24px }
-    .error { color:var(--error); text-align:center; margin-top:16px; white-space:pre-wrap }
-    .bar { display:flex; gap:10px; align-items:center }
-    .bar small { color:var(--muted) }
+    body { background:#111; color:#eee; font-family:sans-serif; }
+    .person { margin:6px; padding:6px; border:1px solid #444; border-radius:8px; }
+    button { margin:2px; padding:4px 8px; }
+    .fn-btn { background:#333; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    .fn-btn:hover { background:#555; }
+    .abs-btn { background:#800; color:#fff; border:none; padding:4px 8px; border-radius:4px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Équipe — Tour de rôle</h1>
-    <div class="bar">
-      <small id="status">Prêt</small>
-      <button id="reload">Recharger</button>
-    </div>
-  </header>
-  <main>
-    <div id="team"></div>
-    <div id="loader" class="loader">Chargement…</div>
-    <div id="err" class="error" style="display:none"></div>
-  </main>
+  <h2>Équipe — Tour de rôle</h2>
+  <div id="team">Chargement…</div>
 
-  <script>
-    /*** CONFIG ***/
-    // Feuille Equipe publiée au format gviz JSON
-    const SHEET_GVIZ_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSo1KidT6LBhfeqfKVNR-kWBlxULeuRJZHLWCnph4ZCJD51zuyZSDqadW_L3qOeXkWLQ56U5XCMCfJJ/gviz/tq?tqx=out:json";
-    // Web app GAS fourni par toi (exécuté en tant que toi, accès tout le monde)
-    const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzqk_6Tuu2aSEHYbD6HmAMEZZ_PZe5fJnpiV2Aw3eTH9z5uC4Rxae7a6-B1meUPDrqm7A/exec";
+<script>
+const SHEET_JSON = "PASTE_SHEET_JSON_URL_HERE";
+const WEBAPP_URL = "PASTE_YOUR_WEBAPP_URL_HERE";
 
-    const FNS = ["CM","HC","STR","CPO","SPE"];
+async function fetchEquipe(){
+  const res = await fetch(WEBAPP_URL+"?action=equipe");
+  return await res.json();
+}
+async function fetchTours(){
+  const res = await fetch(WEBAPP_URL+"?action=tours");
+  return await res.json();
+}
+async function assign(nom,fn){
+  await fetch(WEBAPP_URL+`?action=assign&nom=${encodeURIComponent(nom)}&fn=${encodeURIComponent(fn)}`);
+  render();
+}
+async function retourAbs(nom){
+  await fetch(WEBAPP_URL+`?action=abs&nom=${encodeURIComponent(nom)}`);
+  render();
+}
 
-    function gvizToJSON(text){
-      const json = text.replace(/^.*setResponse\\(/s, '').replace(/\\);\\s*$/, '');
-      return JSON.parse(json);
-    }
-    function normalizeTruthy(v){
-      if (v == null) return false;
-      if (typeof v === 'boolean') return v;
-      const s = String(v).trim().toLowerCase();
-      return s === 'x' || s === '1' || s === 'true' || s === 'oui' || s === 'yes';
-    }
-    function buildRows(obj){
-      const cols = (obj.table.cols || []).map(c => (c.label || c.id || '').trim());
-      const rows = (obj.table.rows || []).map(r => (r.c || []).map(c => c ? (c.f ?? c.v) : ''));
-      return { cols, rows };
-    }
+async function render(){
+  const equipe = await fetchEquipe();
+  const tours = await fetchTours();
+  const div=document.getElementById('team');
+  div.innerHTML='';
+  equipe.equipe.forEach(p=>{
+    const box=document.createElement('div');
+    box.className='person';
+    box.innerHTML=`<b>${p.nom}</b> `;
+    for(const fn in p.fonctions){
+      const val=p.fonctions[fn];
+      const btn=document.createElement('button');
+      btn.className='fn-btn';
+      btn.textContent=fn;
+      btn.onclick=()=>assign(p.nom,fn);
 
-    async function apiState(){
-      const r = await fetch(WEBAPP_URL + "?action=state", {cache:'no-store'});
-      return r.json();
-    }
-    async function apiAssign(assignments){
-      const r = await fetch(WEBAPP_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({type:'assign', assignments})
-      });
-      return r.json();
-    }
-    async function apiRetourAbs(nom){
-      const r = await fetch(WEBAPP_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({type:'retour_abs', nom})
-      });
-      return r.json();
-    }
-
-    const statusEl = document.getElementById('status');
-    const loader = document.getElementById('loader');
-    const err = document.getElementById('err');
-    const teamDiv = document.getElementById('team');
-    document.getElementById('reload').addEventListener('click', () => refreshUI());
-
-    function setStatus(t){ statusEl.textContent = t; }
-
-    async function refreshUI(){
-      err.style.display = 'none';
-      loader.style.display = 'block';
-      teamDiv.innerHTML = '';
-      setStatus("Chargement…");
-      try{
-        const [sheetRes, state] = await Promise.all([
-          fetch(SHEET_GVIZ_URL, {cache:'no-store'}).then(r=>r.text()),
-          apiState()
-        ]);
-        const obj = gvizToJSON(sheetRes);
-        const { cols, rows } = buildRows(obj);
-        const equipe = rows.map(r => {
-          const nom = r[1];
-          const m = { id:r[0], nom };
-          cols.forEach((h,i)=>{ if(i>=2) m[h] = normalizeTruthy(r[i]); });
-          return m;
-        }).filter(m => m.nom);
-        const tours = (state && state.data && state.data.tours) || {};
-        render(equipe, tours);
-        setStatus("Ok");
-      }catch(e){
-        loader.style.display = 'none';
-        err.style.display = 'block';
-        err.textContent = 'Erreur: ' + (e && e.message ? e.message : e);
-        setStatus("Erreur");
-        console.error(e);
+      // afficher rang seulement si X et dans tours
+      if(val==='X' && tours[fn]){
+        let rangObj=tours[fn].find(x=>x.nom===p.nom);
+        if(rangObj){
+          btn.textContent=`${fn} (#${rangObj.rang})`;
+        }
       }
+      box.appendChild(btn);
     }
+    const abs=document.createElement('button');
+    abs.className='abs-btn';
+    abs.textContent='RETOUR ABS';
+    abs.onclick=()=>retourAbs(p.nom);
+    box.appendChild(abs);
 
-    function render(equipe, tours){
-      loader.style.display = 'none';
-      teamDiv.innerHTML = '';
-      equipe.forEach(p => {
-        const card = document.createElement('div');
-        card.className = 'card';
+    div.appendChild(box);
+  });
+}
 
-        const row = document.createElement('div');
-        row.className = 'row';
-
-        const name = document.createElement('div');
-        name.className = 'name';
-        name.textContent = p.nom;
-        row.appendChild(name);
-
-        const fn = document.createElement('div');
-        fn.className = 'fn';
-
-        FNS.forEach(f => {
-          if (!p[f]) return; // n'affiche que les fonctions possédées
-          const btn = document.createElement('button');
-          btn.className = 'assign';
-          const orderList = tours[f] || [];
-          const idx = orderList.indexOf(p.nom);
-          const rank = idx >= 0 ? ('#' + (idx+1)) : '';
-          btn.textContent = f + (rank ? ' — ' + rank : '');
-          btn.title = 'Assigner ' + f + ' à ' + p.nom + ' (aujourd’hui)';
-          btn.addEventListener('click', async () => {
-            const today = new Date().toISOString().slice(0,10);
-            setStatus('Assignation…');
-            try{
-              await apiAssign([{date: today, nom: p.nom, fonction: f}]);
-              await refreshUI();
-            }catch(e){
-              err.style.display = 'block';
-              err.textContent = 'Échec assignation: ' + e;
-              setStatus('Erreur');
-            }
-          });
-          fn.appendChild(btn);
-        });
-
-        // Bouton RETOUR ABS
-        const absBox = document.createElement('div');
-        absBox.className = 'abs';
-        const absBtn = document.createElement('button');
-        absBtn.textContent = 'RETOUR ABS';
-        absBtn.title = 'Met ' + p.nom + ' dernier dans toutes ses listes';
-        absBtn.addEventListener('click', async () => {
-          setStatus('Retour ABS…');
-          try {
-            await apiRetourAbs(p.nom);
-            await refreshUI();
-          } catch(e){
-            err.style.display = 'block';
-            err.textContent = 'Échec retour ABS: ' + e;
-            setStatus('Erreur');
-          }
-        });
-        absBox.appendChild(absBtn);
-
-        row.appendChild(fn);
-        row.appendChild(absBox);
-        card.appendChild(row);
-        teamDiv.appendChild(card);
-      });
-    }
-
-    refreshUI();
-  </script>
+render();
+</script>
 </body>
 </html>
