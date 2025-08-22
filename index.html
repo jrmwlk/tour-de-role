@@ -17,8 +17,8 @@
   <div id="team">Chargement…</div>
 
 <script>
-const SHEET_JSON = "PASTE_SHEET_JSON_URL_HERE";
-const WEBAPP_URL = "PASTE_YOUR_WEBAPP_URL_HERE";
+const SHEET_JSON = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSo1KidT6LBhfeqfKVNR-kWBlxULeuRJZHLWCnph4ZCJD51zuyZSDqadW_L3qOeXkWLQ56U5XCMCfJJ/gviz/tq?tqx=out:json";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzqk_6Tuu2aSEHYbD6HmAMEZZ_PZe5fJnpiV2Aw3eTH9z5uC4Rxae7a6-B1meUPDrqm7A/exec";
 
 async function fetchEquipe(){
   const res = await fetch(WEBAPP_URL+"?action=equipe");
@@ -53,7 +53,6 @@ async function render(){
       btn.textContent=fn;
       btn.onclick=()=>assign(p.nom,fn);
 
-      // afficher rang seulement si X et dans tours
       if(val==='X' && tours[fn]){
         let rangObj=tours[fn].find(x=>x.nom===p.nom);
         if(rangObj){
