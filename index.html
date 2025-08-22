@@ -2,124 +2,144 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Équipe — Tour de rôle</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tour de rôle — Équipe</title>
   <style>
-    body { background:#111; color:#eee; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; }
-    header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; }
-    h1 { margin:0; font-size:20px; }
-    .actions { display:flex; gap:8px; align-items:center; }
-    button { background:#333; color:#eee; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; }
-    button:hover { background:#444; }
-    .wrap { padding: 8px 16px 24px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
-    .card { background:#1a1a1a; border:1px solid #222; border-radius:12px; padding:12px; }
-    .name { font-weight:700; margin-bottom:8px; }
-    .fn-row { display:flex; flex-wrap:wrap; gap:6px; }
-    .fn-btn { background:#2d2d2d; color:#eee; border:none; border-radius:8px; padding:6px 8px; cursor:pointer; font-size:13px; }
-    .fn-btn:hover { background:#3a3a3a; }
-    .abs-btn { background:#7c2d2d; }
-    .rank { display:inline-block; font-size:11px; background:#0b5; color:#041; border-radius:999px; padding:2px 6px; margin-left:6px; }
-    .footer { color:#aaa; font-size:12px; padding:10px 16px; border-top:1px solid #222; }
-    .warn { color:#f66; padding:8px 12px; }
+    :root {
+      --bg:#0b0b0f; --card:#14141b; --muted:#7c7c8a;
+      --text:#e9e9ef; --accent:#4ea8de; --error:#ef4444;
+    }
+    html,body {
+      margin:0; padding:0;
+      background:var(--bg); color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif
+    }
+    header {
+      display:flex; align-items:center; gap:12px;
+      padding:16px 20px;
+      border-bottom:1px solid #1f1f29;
+      background:linear-gradient(180deg,#15151c,#0b0b0f)
+    }
+    h1 {font-size:18px;margin:0;font-weight:700;letter-spacing:.3px}
+    main {max-width:980px;margin:24px auto;padding:0 16px}
+    .card {
+      background:var(--card); border-radius:12px;
+      padding:14px 18px; margin-bottom:10px
+    }
+    .row-top { display:flex; align-items:center; justify-content:space-between; gap:12px }
+    .name {font-weight:600}
+    .muted { color:var(--muted); font-size:12px }
+    .functions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
+    .functions button {
+      background:var(--accent); border:none;
+      border-radius:999px; padding:6px 12px;
+      color:white; cursor:pointer; font-size:12px
+    }
+    .empty { color:var(--muted); text-align:center; margin-top:40px }
+    .error { color:var(--error); text-align:center; margin-top:16px; white-space:pre-wrap }
+    .loader { text-align:center; margin-top:24px }
   </style>
 </head>
 <body>
   <header>
     <h1>Équipe — Tour de rôle</h1>
-    <div class="actions">
-      <button id="urlBtn">URL WebApp</button>
-      <button id="refreshBtn">Rafraîchir</button>
-    </div>
   </header>
-  <div class="wrap">
-    <div id="warn" class="warn" style="display:none"></div>
-    <div id="team" class="grid"></div>
-  </div>
-  <div class="footer">Si la page reste vide : vérifie l’URL WebApp et que le déploiement est en accès public.</div>
+  <main>
+    <div id="team"></div>
+    <div id="loader" class="loader">Chargement…</div>
+    <div id="msg" class="empty" style="display:none">Aucun membre à afficher.</div>
+    <div id="err" class="error" style="display:none"></div>
+  </main>
 
-<script>
-const LS_KEY = 'webapp_url';
+  <script>
+    // Endpoint gviz JSON (évite les soucis CORS des CSV sur GitHub Pages)
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSo1KidT6LBhfeqfKVNR-kWBlxULeuRJZHLWCnph4ZCJD51zuyZSDqadW_L3qOeXkWLQ56U5XCMCfJJ/gviz/tq?tqx=out:json";
 
-function getURL(){
-  return localStorage.getItem(LS_KEY) || '';
-}
-function setURL(u){
-  if(u) localStorage.setItem(LS_KEY, u);
-}
-function promptURL(){
-  const cur = getURL();
-  const v = prompt('Colle l’URL WebApp (celle qui finit par /exec) :', cur || '');
-  if(v) { setURL(v.trim()); render(); }
-}
-
-async function fetchJSONP(action, params={}){
-  return new Promise((resolve,reject)=>{
-    const base=getURL();
-    if(!base){ reject(new Error('Aucune URL WebApp configurée')); return; }
-    const cb='cb'+Date.now()+Math.floor(Math.random()*10000);
-    window[cb]=(data)=>{ resolve(data); cleanup(); };
-    const cleanup=()=>{ try{ delete window[cb]; script.remove(); }catch(_){} };
-    const usp = new URLSearchParams({...params, action, callback:cb});
-    const script=document.createElement('script');
-    script.src = base + '?' + usp.toString();
-    script.onerror = ()=>{ reject(new Error('Erreur de chargement JSONP (URL ou droits)')); cleanup(); };
-    document.body.appendChild(script);
-  });
-}
-
-async function render(){
-  const div=document.getElementById('team');
-  const warn=document.getElementById('warn');
-  div.innerHTML='';
-  warn.style.display='none';
-  try{
-    const equipe = await fetchJSONP('equipe');
-    const tours  = await fetchJSONP('tours');
-    const map = tours; // { STR:[...], ... }
-    if(!equipe.people || !equipe.people.length){
-      warn.textContent = 'Aucun membre trouvé (onglet Equipe vide ?)'; warn.style.display='block'; return;
+    function gvizToJSON(text){
+      // Retire le wrapper google.visualization.Query.setResponse(...);
+      const json = text.replace(/^.*setResponse\(/s, '').replace(/\);\s*$/, '');
+      return JSON.parse(json);
     }
-    equipe.people.forEach(p=>{
-      const box=document.createElement('div'); box.className='card';
-      const title=document.createElement('div'); title.className='name'; title.textContent=p.nom; box.appendChild(title);
 
-      const row=document.createElement('div'); row.className='fn-row';
-      Object.keys(p.flags).forEach(fn=>{
-        const flag=p.flags[fn];
-        if(flag!=='X' && flag!=='N') return; // boutons seulement pour fonctions possédées
-        const btn=document.createElement('button'); btn.className='fn-btn'; btn.textContent=fn;
-        // Affiche rang pour fonctions rotatives
-        const list=(map&&map[fn])? map[fn] : [];
-        if(flag==='X' && Array.isArray(list)){
-          const idx = list.indexOf(p.nom);
-          if(idx>-1){ const r=document.createElement('span'); r.className='rank'; r.textContent='#'+(idx+1); btn.appendChild(r); }
-        }
-        btn.onclick= async ()=>{
-          try{ await fetchJSONP('assign',{ nom:p.nom, fn }); render(); }catch(e){ alert('Erreur assign: '+e.message); }
-        };
-        row.appendChild(btn);
+    function normalizeTruthy(v){
+      if (v == null) return false;
+      if (typeof v === 'boolean') return v;
+      const s = String(v).trim().toLowerCase();
+      return s === 'x' || s === '1' || s === 'true' || s === 'oui' || s === 'yes';
+    }
+
+    function buildRows(obj){
+      const cols = (obj.table.cols || []).map(c => (c.label || c.id || '').trim());
+      const rows = (obj.table.rows || []).map(r => (r.c || []).map(c => c ? (c.f ?? c.v) : ''));
+      return { cols, rows };
+    }
+
+    function renderTeam(cols, rows){
+      const teamDiv = document.getElementById('team');
+      const msg = document.getElementById('msg');
+      const loader = document.getElementById('loader');
+      loader.style.display = 'none';
+      teamDiv.innerHTML = '';
+
+      if (!rows.length){
+        msg.style.display = 'block';
+        return;
+      }
+
+      // Hypothèse : col0 = ID, col1 = Nom, reste = fonctions (garde l'ordre de la feuille)
+      rows.forEach(r => {
+        const id = r[0];
+        const nom = r[1] || id || '—';
+        if (!nom) return;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const top = document.createElement('div');
+        top.className = 'row-top';
+        const nameEl = document.createElement('div');
+        nameEl.className = 'name';
+        nameEl.textContent = nom;
+        top.appendChild(nameEl);
+        card.appendChild(top);
+
+        const fnDiv = document.createElement('div');
+        fnDiv.className = 'functions';
+
+        cols.forEach((h, i) => {
+          if (i < 2) return; // saute ID + Nom
+          const val = r[i];
+          if (normalizeTruthy(val)){
+            const btn = document.createElement('button');
+            btn.textContent = h || ('Colonne ' + (i+1));
+            fnDiv.appendChild(btn);
+          }
+        });
+
+        card.appendChild(fnDiv);
+        teamDiv.appendChild(card);
       });
-      // Retour ABS
-      const abs=document.createElement('button'); abs.className='fn-btn abs-btn'; abs.textContent='RETOUR ABS';
-      abs.onclick= async ()=>{ try{ await fetchJSONP('abs',{ nom:p.nom }); render(); }catch(e){ alert('Erreur ABS: '+e.message); } };
-      row.appendChild(abs);
+    }
 
-      box.appendChild(row);
-      div.appendChild(box);
-    });
-  }catch(err){
-    warn.textContent='Erreur de chargement. Vérifie que l’URL WebApp est bien déployée en accès public. ('+err.message+')';
-    warn.style.display='block';
-    console.error(err);
-  }
-}
+    async function load(){
+      const err = document.getElementById('err');
+      const loader = document.getElementById('loader');
+      try{
+        const res = await fetch(sheetUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        const obj = gvizToJSON(text);
+        const { cols, rows } = buildRows(obj);
+        renderTeam(cols, rows);
+      }catch(e){
+        loader.style.display = 'none';
+        err.style.display = 'block';
+        err.textContent = 'Erreur de chargement des données. ' + (e && e.message ? e.message : '');
+        console.error(e);
+      }
+    }
 
-document.getElementById('urlBtn').onclick=promptURL;
-document.getElementById('refreshBtn').onclick=render;
-
-// boot
-if(!getURL()) promptURL(); else render();
-</script>
+    load();
+  </script>
 </body>
 </html>
