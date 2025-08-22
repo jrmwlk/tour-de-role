@@ -2,109 +2,80 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Tour de rôle — Équipe (debug)</title>
+  <title>Tour de rôle — Équipe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { background:#111; color:#eee; font-family:sans-serif; }
-    .person { margin:6px; padding:6px; border:1px solid #444; border-radius:8px; }
-    button { margin:2px; padding:4px 8px; }
-    .fn-btn { background:#333; color:#fff; border:none; border-radius:4px; cursor:pointer; }
-    .fn-btn:hover { background:#555; }
-    .abs-btn { background:#800; color:#fff; border:none; padding:4px 8px; border-radius:4px; }
-    .debug { position:fixed; right:8px; top:8px; width:38%; max-width:520px; background:#181818; border:1px solid #333; border-radius:8px; padding:8px; }
-    .debug pre { white-space:pre-wrap; font-size:12px; background:#0e0e0e; padding:8px; border-radius:6px; max-height:280px; overflow:auto; }
-    .muted { color:#bbb; font-size:12px; }
+    body { background:#111; color:#eee; font-family:-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; margin:0; }
+    h2 { margin:16px; }
+    #team { padding: 0 16px 24px; }
+    .person { margin:10px 0; padding:10px; border:1px solid #333; border-radius:10px; background:#151515; }
+    .person b { display:inline-block; min-width:220px; }
+    button { margin:4px 6px 0 0; padding:6px 10px; border-radius:8px; border:0; cursor:pointer; }
+    .fn-btn { background:#2f2f2f; color:#fff; }
+    .fn-btn:hover { background:#444; }
+    .abs-btn { background:#7a1020; color:#fff; }
+    .muted { color:#bbb; }
   </style>
 </head>
 <body>
   <h2>Équipe — Tour de rôle</h2>
   <div id="team">Chargement…</div>
-  <div class="debug">
-    <div class="muted">Debug</div>
-    <div><b>WebApp</b>: <span id="webappUrl"></span></div>
-    <div><b>Status</b>: <span id="status">init…</span></div>
-    <details open>
-      <summary>Dernières réponses</summary>
-      <div><b>/equipe</b><pre id="dbgEquipe"></pre></div>
-      <div><b>/tours</b><pre id="dbgTours"></pre></div>
-      <div><b>Erreur</b><pre id="dbgErr"></pre></div>
-    </details>
-  </div>
 
 <script>
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzsrAVc51JxqN7PKcfYQGYQlXh6VmTr99iPQ_HfI3pZaFaq1dfchriSewDGXyuwdPGag/exec";
-document.getElementById('webappUrl').textContent = WEBAPP_URL;
 
-const $ = (id)=>document.getElementById(id);
-function setStatus(s){ $('status').textContent = s; }
-
-async function fetchJSON(url){
-  const r = await fetch(url, {cache:'no-store'});
-  const t = await r.text();
-  try { return { ok:true, json: JSON.parse(t), raw: t }; }
-  catch(e){ return { ok:false, json:null, raw: t, error: String(e) }; }
+// ---- JSONP util ----
+function jsonp(url, cb){
+  const name = "__cb_" + Math.random().toString(36).slice(2);
+  const s = document.createElement('script');
+  const sep = url.includes('?') ? '&' : '?';
+  s.src = url + sep + 'callback=' + name;
+  s.onerror = () => { try { cb(new Error('JSONP load error')); } finally { delete window[name]; s.remove(); } };
+  window[name] = (data) => { try { cb(null, data); } finally { delete window[name]; s.remove(); } };
+  document.body.appendChild(s);
 }
 
-async function fetchEquipe(){
-  const res = await fetchJSON(WEBAPP_URL+"?action=equipe");
-  $('dbgEquipe').textContent = res.raw || '';
-  if(!res.ok) throw new Error("JSON parse équipe: "+res.error);
-  return res.json;
-}
-async function fetchTours(){
-  const res = await fetchJSON(WEBAPP_URL+"?action=tours");
-  $('dbgTours').textContent = res.raw || '';
-  if(!res.ok) throw new Error("JSON parse tours: "+res.error);
-  return res.json;
-}
+// ---- API via JSONP ----
+function apiEquipe() { return new Promise((res, rej) => jsonp(WEBAPP_URL + "?action=equipe", (e,d)=> e?rej(e):res(d))); }
+function apiTours()  { return new Promise((res, rej) => jsonp(WEBAPP_URL + "?action=tours",  (e,d)=> e?rej(e):res(d))); }
+function apiAssign(nom, fn) { return new Promise((res, rej) => jsonp(WEBAPP_URL + "?action=assign&nom="+encodeURIComponent(nom)+"&fn="+encodeURIComponent(fn), (e,d)=> e?rej(e):res(d))); }
+function apiAbs(nom)       { return new Promise((res, rej) => jsonp(WEBAPP_URL + "?action=abs&nom="+encodeURIComponent(nom), (e,d)=> e?rej(e):res(d))); }
 
-async function assign(nom,fn){
-  await fetch(WEBAPP_URL+`?action=assign&nom=${encodeURIComponent(nom)}&fn=${encodeURIComponent(fn)}`);
-  render();
-}
-async function retourAbs(nom){
-  await fetch(WEBAPP_URL+`?action=abs&nom=${encodeURIComponent(nom)}`);
-  render();
-}
-
+// ---- UI ----
 async function render(){
   const div = document.getElementById('team');
-  div.innerHTML = "Chargement…";
-  setStatus('chargement…');
-
-  try{
-    const equipe = await fetchEquipe();     // {people, headers}
-    const toursResp = await fetchTours();   // {tours:{...}}
-    const tourMap = (toursResp && toursResp.tours) ? toursResp.tours : {};
+  div.textContent = "Chargement…";
+  try {
+    const equipe = await apiEquipe();   // {people, headers}
+    const toursR = await apiTours();    // {tours: {FN:[...]}}
+    const tours = (toursR && toursR.tours) ? toursR.tours : {};
 
     div.innerHTML = "";
-    if(!equipe || !Array.isArray(equipe.people)){
-      div.innerHTML = "<p style='color:#f66'>Erreur : format équipe inattendu.</p>";
-      $('dbgErr').textContent = 'equipe.people manquant';
-      setStatus('erreur');
+    const list = (equipe && Array.isArray(equipe.people)) ? equipe.people : [];
+    if(!list.length) {
+      div.innerHTML = "<p class='muted'>Aucun membre dans 'Équipe'.</p>";
       return;
     }
 
-    equipe.people.forEach(p=>{
+    list.forEach(p=>{
       const box = document.createElement('div');
       box.className = 'person';
-      box.innerHTML = `<b>${p.nom}</b> `;
+
+      const title = document.createElement('b');
+      title.textContent = p.nom || "(sans nom)";
+      box.appendChild(title);
 
       const flags = p.flags || {};
       const fns = Object.keys(flags).filter(k => String(flags[k]||'').trim() !== '');
-      if(!fns.length){
-        const i = document.createElement('i');
-        i.textContent = '— aucune fonction —';
-        box.appendChild(i);
-      }
       fns.forEach(fn=>{
         const btn = document.createElement('button');
         btn.className = 'fn-btn';
-        btn.onclick = ()=>assign(p.nom, fn);
+        btn.onclick = async () => { await apiAssign(p.nom, fn); render(); };
 
         let label = fn;
-        const list = tourMap[fn] || [];
-        if (String(flags[fn]||'') === 'X' && Array.isArray(list)) {
-          const idx = list.indexOf(p.nom);
+        const listFn = tours[fn] || [];
+        if (String(flags[fn]||'') === 'X' && Array.isArray(listFn)) {
+          const idx = listFn.indexOf(p.nom);
           if (idx >= 0) label = `${fn} (#${idx+1})`;
         }
         btn.textContent = label;
@@ -114,21 +85,14 @@ async function render(){
       const abs = document.createElement('button');
       abs.className = 'abs-btn';
       abs.textContent = 'RETOUR ABS';
-      abs.onclick = ()=>retourAbs(p.nom);
+      abs.onclick = async () => { await apiAbs(p.nom); render(); };
       box.appendChild(abs);
 
       div.appendChild(box);
     });
-
-    if(!equipe.people.length){
-      div.innerHTML = "<p>Aucun membre dans 'Équipe'.</p>";
-    }
-    setStatus('ok');
-  }catch(err){
+  } catch(err) {
     console.error(err);
-    $('dbgErr').textContent = String(err && err.stack || err);
-    div.innerHTML = "<p style='color:#f66'>Erreur de chargement. Voir debug à droite.</p>";
-    setStatus('erreur');
+    div.innerHTML = "<p style='color:#f66'>Erreur de chargement. Vérifie que l'URL WebApp est bien déployée en accès public.</p>";
   }
 }
 
