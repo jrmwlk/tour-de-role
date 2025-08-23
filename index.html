@@ -8,7 +8,6 @@
     :root{
       --bg:#0f1115; --panel:#141821; --muted:#2a2f3a; --line:#1e2430;
       --text:#e6e6e6; --sub:#9aa3b2; --brand:#6bc2ff;
-      --sticky-top: 56px; /* sera recalculé en JS */
     }
     *{box-sizing:border-box}
     body{
@@ -39,7 +38,9 @@
     .table-wrap{
       overflow-x:auto; -webkit-overflow-scrolling:touch;
       border:1px solid var(--line); border-radius:12px; background:var(--panel);
-      margin-top:8px; /* évite que la 1ère ligne colle au header sticky */
+      margin-top:8px;
+      /* Important: le sticky header se réfère à ce conteneur scrollable */
+      position: relative;
     }
     table{
       width:100%; border-collapse:separate; border-spacing:0;
@@ -48,13 +49,13 @@
     thead th{
       font-weight:600; font-size:12px; color:var(--sub);
       background:#12161f; border-bottom:1px solid var(--line);
-      padding:8px 6px; text-align:center; position:sticky; top:var(--sticky-top); z-index:4;
+      padding:8px 6px; text-align:center;
+      /* En-tête intégré au tableau et collé en haut du conteneur scrollable */
+      position: sticky; top: 0; z-index: 4;
+      box-shadow: 0 2px 0 0 var(--line);
     }
     tbody td{
       border-bottom:1px solid var(--line); text-align:center; padding:4px 4px; font-size:12px;
-    }
-    tbody tr:first-child td{ /* espace anti-recouvrement sous l'en-tête */
-      padding-top: calc(2px + 0px);
     }
     tbody tr:last-child td{border-bottom:none}
     th:first-child, td:first-child{
@@ -63,6 +64,8 @@
       min-width: 160px; /* largeur fixe pour le nom */
       white-space: nowrap;
     }
+    /* Le th Nom doit être au-dessus des td sticky lors du scroll */
+    thead th:first-child{ z-index:5 }
     .cell{
       display:flex; align-items:center; justify-content:center; gap:4px;
       flex-direction: column; /* bouton au-dessus, badge en dessous */
@@ -107,7 +110,7 @@
   </style>
 </head>
 <body>
-  <header id="appHeader">
+  <header>
     <h1>Tour de rôle</h1>
     <div class="tools">
       <input type="date" id="datePicker"/>
@@ -166,15 +169,7 @@
     function todayLocal(){ const n=new Date(); return new Date(n.getTime()-n.getTimezoneOffset()*60000); }
     function setNotice(msg){ $('#notice').innerHTML = msg || ""; }
 
-    // --- Sticky header dynamique (corrige la 1ère ligne masquée) ---
-    function setStickyTop(){
-      const hh = document.getElementById('appHeader').offsetHeight || 56;
-      document.documentElement.style.setProperty('--sticky-top', (hh) + 'px');
-    }
-    window.addEventListener('resize', setStickyTop);
-
     function init(){
-      setStickyTop();
       $('#datePicker').value = isoDate(todayLocal());
       state.date = $('#datePicker').value;
       $('#settingsBtn').addEventListener('click', () => $('#modal').classList.remove('hidden'));
