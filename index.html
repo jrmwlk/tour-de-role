@@ -2,144 +2,91 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tour de rôle — Équipe</title>
+  <title>Tour de rôle</title>
   <style>
-    :root {
-      --bg:#0b0b0f; --card:#14141b; --muted:#7c7c8a;
-      --text:#e9e9ef; --accent:#4ea8de; --error:#ef4444;
-    }
-    html,body {
-      margin:0; padding:0;
-      background:var(--bg); color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #eee;
+      margin: 0;
+      padding: 20px;
     }
     header {
-      display:flex; align-items:center; gap:12px;
-      padding:16px 20px;
-      border-bottom:1px solid #1f1f29;
-      background:linear-gradient(180deg,#15151c,#0b0b0f)
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
-    h1 {font-size:18px;margin:0;font-weight:700;letter-spacing:.3px}
-    main {max-width:980px;margin:24px auto;padding:0 16px}
-    .card {
-      background:var(--card); border-radius:12px;
-      padding:14px 18px; margin-bottom:10px
+    h1 {
+      margin: 0;
+      font-size: 1.5em;
     }
-    .row-top { display:flex; align-items:center; justify-content:space-between; gap:12px }
-    .name {font-weight:600}
-    .muted { color:var(--muted); font-size:12px }
-    .functions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
-    .functions button {
-      background:var(--accent); border:none;
-      border-radius:999px; padding:6px 12px;
-      color:white; cursor:pointer; font-size:12px
+    input[type="date"] {
+      background: #1e1e1e;
+      color: #eee;
+      border: 1px solid #444;
+      padding: 5px 10px;
+      border-radius: 6px;
     }
-    .empty { color:var(--muted); text-align:center; margin-top:40px }
-    .error { color:var(--error); text-align:center; margin-top:16px; white-space:pre-wrap }
-    .loader { text-align:center; margin-top:24px }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #1f1f1f;
+    }
+    button {
+      background: #2a2a2a;
+      border: none;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #444;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Équipe — Tour de rôle</h1>
+    <h1>Tour de rôle</h1>
+    <input type="date" id="datePicker">
   </header>
-  <main>
-    <div id="team"></div>
-    <div id="loader" class="loader">Chargement…</div>
-    <div id="msg" class="empty" style="display:none">Aucun membre à afficher.</div>
-    <div id="err" class="error" style="display:none"></div>
-  </main>
+
+  <table id="roleTable">
+    <thead>
+      <tr>
+        <th>Nom</th>
+        <th>CM</th>
+        <th>HC</th>
+        <th>STR</th>
+        <th>CPO</th>
+        <th>SPE</th>
+        <th>Retour ABS</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Contenu injecté par Apps Script -->
+    </tbody>
+  </table>
+
+  <div style="margin-top:20px; text-align:center;">
+    <button onclick="valider()">Valider</button>
+  </div>
 
   <script>
-    // Endpoint gviz JSON (évite les soucis CORS des CSV sur GitHub Pages)
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSo1KidT6LBhfeqfKVNR-kWBlxULeuRJZHLWCnph4ZCJD51zuyZSDqadW_L3qOeXkWLQ56U5XCMCfJJ/gviz/tq?tqx=out:json";
+    document.getElementById('datePicker').valueAsDate = new Date();
 
-    function gvizToJSON(text){
-      // Retire le wrapper google.visualization.Query.setResponse(...);
-      const json = text.replace(/^.*setResponse\(/s, '').replace(/\);\s*$/, '');
-      return JSON.parse(json);
+    function valider() {
+      alert('Envoi des données... (connexion Apps Script à compléter)');
     }
-
-    function normalizeTruthy(v){
-      if (v == null) return false;
-      if (typeof v === 'boolean') return v;
-      const s = String(v).trim().toLowerCase();
-      return s === 'x' || s === '1' || s === 'true' || s === 'oui' || s === 'yes';
-    }
-
-    function buildRows(obj){
-      const cols = (obj.table.cols || []).map(c => (c.label || c.id || '').trim());
-      const rows = (obj.table.rows || []).map(r => (r.c || []).map(c => c ? (c.f ?? c.v) : ''));
-      return { cols, rows };
-    }
-
-    function renderTeam(cols, rows){
-      const teamDiv = document.getElementById('team');
-      const msg = document.getElementById('msg');
-      const loader = document.getElementById('loader');
-      loader.style.display = 'none';
-      teamDiv.innerHTML = '';
-
-      if (!rows.length){
-        msg.style.display = 'block';
-        return;
-      }
-
-      // Hypothèse : col0 = ID, col1 = Nom, reste = fonctions (garde l'ordre de la feuille)
-      rows.forEach(r => {
-        const id = r[0];
-        const nom = r[1] || id || '—';
-        if (!nom) return;
-
-        const card = document.createElement('div');
-        card.className = 'card';
-
-        const top = document.createElement('div');
-        top.className = 'row-top';
-        const nameEl = document.createElement('div');
-        nameEl.className = 'name';
-        nameEl.textContent = nom;
-        top.appendChild(nameEl);
-        card.appendChild(top);
-
-        const fnDiv = document.createElement('div');
-        fnDiv.className = 'functions';
-
-        cols.forEach((h, i) => {
-          if (i < 2) return; // saute ID + Nom
-          const val = r[i];
-          if (normalizeTruthy(val)){
-            const btn = document.createElement('button');
-            btn.textContent = h || ('Colonne ' + (i+1));
-            fnDiv.appendChild(btn);
-          }
-        });
-
-        card.appendChild(fnDiv);
-        teamDiv.appendChild(card);
-      });
-    }
-
-    async function load(){
-      const err = document.getElementById('err');
-      const loader = document.getElementById('loader');
-      try{
-        const res = await fetch(sheetUrl, { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
-        const obj = gvizToJSON(text);
-        const { cols, rows } = buildRows(obj);
-        renderTeam(cols, rows);
-      }catch(e){
-        loader.style.display = 'none';
-        err.style.display = 'block';
-        err.textContent = 'Erreur de chargement des données. ' + (e && e.message ? e.message : '');
-        console.error(e);
-      }
-    }
-
-    load();
   </script>
 </body>
 </html>
