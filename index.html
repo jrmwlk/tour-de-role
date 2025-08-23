@@ -9,10 +9,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
-    :root{
-      --bg:#0f1115; --panel:#141821; --muted:#2a2f3a; --line:#1e2430;
-      --text:#e6e6e6; --sub:#9aa3b2; --red:#d82d2d; --red-bg:#3a1212; --red-soft:#ffb3b3;
-    }
+    :root{ --bg:#0f1115; --panel:#141821; --muted:#2a2f3a; --line:#1e2430;
+           --text:#e6e6e6; --sub:#9aa3b2; --red:#d82d2d; --red-bg:#3a1212; --red-soft:#ffb3b3; }
     *{box-sizing:border-box}
     body{ margin:0; background:var(--bg); color:var(--text);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
@@ -20,7 +18,7 @@
       backdrop-filter: blur(6px); display:flex; align-items:center; justify-content:space-between;
       padding:8px 12px; border-bottom:1px solid var(--line); gap:8px; }
     .brand{ flex:1 1 auto; text-align:center; }
-    .logo-box { background:#fff; border-radius:12px; display:inline-block; padding:6px; }
+    .logo-box{ background:#fff; border-radius:12px; display:inline-block; padding:6px; }
     .logo{ display:inline-block; height:52px; max-width:70vw; object-fit:contain }
     h1{ margin:6px 0 0 0; font-size:16px; letter-spacing:.3px }
     .tools{ flex:0 0 auto; display:flex; gap:8px; align-items:center }
@@ -29,21 +27,22 @@
     .btn:hover{background:#212837} .btn.approve{border-color:#214c2b; background:#142418}
     .wrap{padding:12px}
     .table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--panel); margin-top:8px; }
-    table{ width:100%; border-collapse:separate; border-spacing:0; min-width: 720px; }
+    table{ width:100%; border-collapse:separate; border-spacing:0; min-width:720px; }
     thead th{ font-weight:600; font-size:12px; color:var(--sub); background:#12161f; border-bottom:1px solid var(--line);
-      padding:8px 6px; text-align:center; position: sticky; top: 0; z-index: 4; }
+      padding:8px 6px; text-align:center; position:sticky; top:0; z-index:4; }
     tbody td{ border-bottom:1px solid var(--line); text-align:center; padding:4px 4px; font-size:12px; }
     th:first-child, td:first-child{ position:sticky; left:0; z-index:3; background:#12161f;
-      text-align:left; padding-left:10px; min-width: 160px; white-space: nowrap; }
-    td.highlight{ color: var(--red); font-weight: 700; }
-    .cell{ display:flex; align-items:center; justify-content:center; gap:4px; flex-direction: column; }
+      text-align:left; padding-left:10px; min-width:160px; white-space:nowrap; }
+    td.highlight{ color:var(--red); font-weight:700; }
+    .cell{ display:flex; align-items:center; justify-content:center; gap:4px; flex-direction:column; }
     .assign{ min-width:52px; padding:5px 6px; border-radius:8px; border:1px solid var(--muted); background:#171c25; cursor:pointer; font-size:11px; }
+    .assign:disabled{ opacity:.3; cursor:not-allowed }
     .assign.active{ border-color:var(--red); background:var(--red-bg); color:var(--red-soft); }
     .badge{ display:inline-flex; align-items:center; justify-content:center; min-width:24px; padding:1px 6px; border-radius:999px; font-size:10px;
       border:1px solid var(--muted); color:var(--sub); }
     .footbar{ display:flex; gap:8px; justify-content:center; margin:12px 0 2px }
-    .hidden{ display:none !important }
-    @media (max-width: 430px){
+    .hidden{ display:none!important }
+    @media (max-width:430px){
       .logo{ height:44px }
       h1{ font-size:15px }
       .assign{ min-width:46px; padding:4px 5px; font-size:10.5px }
@@ -57,9 +56,7 @@
       <button class="btn" id="reloadBtn" title="Recharger">↻</button>
     </div>
     <div class="brand">
-      <div class="logo-box">
-        <img src="logo.png" alt="Logo" class="logo">
-      </div>
+      <div class="logo-box"><img src="logo.png" alt="Logo" class="logo"></div>
       <h1>Tour de rôle</h1>
     </div>
     <div class="tools" style="opacity:0; pointer-events:none">
@@ -83,8 +80,9 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbyylZcJzhDxkGpx-XuVjBkobtdD3Ofs4tOTlY2yK93tF-CatVs2v2SaM25En_z86cSK6Q/exec";
-    const state = { date: new Date().toISOString().slice(0,10), functions: [], team: [], assignments: {} };
-    const $ = (s)=>document.querySelector(s);
+    const INFO_ONLY = new Set(["VL","CEQ","FOR","DEL"]); // pas de tour
+    const state = { date:new Date().toISOString().slice(0,10), functions:[], team:[], assignments:{} };
+    const $ = s => document.querySelector(s);
 
     function init(){
       $('#datePicker').value = state.date;
@@ -96,58 +94,75 @@
 
     async function reload(){
       try{
-        const res = await fetch(API_URL+"?date="+encodeURIComponent(state.date));
+        const res = await fetch(API_URL+"?date="+encodeURIComponent(state.date), {headers:{'Accept':'application/json'}});
         const data = await res.json();
         state.functions = (data.functions||[]).filter(h=>!/^ID$|^NOM$/i.test(h));
-        state.team = data.team||[];
+        state.team = data.team||[];   // [{id,nom,skills{},tours{}}]
         renderTable();
-      }catch(e){ alert("Erreur chargement API"); }
+      }catch(e){ console.error(e); alert("Erreur chargement API"); }
+    }
+
+    function canDo(val){
+      const s = String(val||"").trim().toUpperCase();
+      if(s==='X' || s==='C') return true;
+      const n = Number(s); return Number.isFinite(n) && n>=1 && n<=15;
     }
 
     function renderTable(){
       $('#roleTable').classList.remove('hidden');
       $('#thead').innerHTML=""; $('#tbody').innerHTML="";
+
       const trh=document.createElement("tr");
       trh.innerHTML="<th>Nom</th>"+state.functions.map(f=>"<th>"+f+"</th>").join("");
       $('#thead').appendChild(trh);
 
       for(const p of state.team){
         const tr=document.createElement("tr");
-        const tdName=document.createElement("td"); tdName.textContent=p.nom; tr.appendChild(tdName);
+        const tdName=document.createElement("td"); tdName.textContent=p.nom||""; tr.appendChild(tdName);
+
         state.functions.forEach(fn=>{
           const td=document.createElement("td");
-          const btn=document.createElement("button"); btn.className="assign"; btn.textContent=fn;
+          const cell=document.createElement("div"); cell.className="cell";
 
-          const raw = p.skills ? String(p.skills[fn]||"").trim().toUpperCase() : "";
-          const canDo = raw==="X" || raw==="C" || (!isNaN(+raw) && +raw>=1 && +raw<=15);
-          btn.disabled = !canDo;
+          const skill = p.skills ? p.skills[fn] : "";
+          const enabled = canDo(skill);
+          const tour = (p.tours && (p.tours[fn]!==undefined && p.tours[fn]!==null) ? String(p.tours[fn]) : "");
+          const isInfo = INFO_ONLY.has(fn);
 
+          const btn=document.createElement("button");
+          btn.className="assign"; btn.textContent=fn; btn.disabled=!enabled;
           btn.onclick=()=>{
             if(btn.disabled) return;
             tr.querySelectorAll(".assign").forEach(b=>b.classList.remove("active"));
-            if(state.assignments[p.id]===fn){
-              delete state.assignments[p.id];
-              tdName.classList.remove("highlight");
-            }else{
-              state.assignments[p.id]=fn; btn.classList.add("active");
-              tdName.classList.add("highlight");
-            }
+            if(state.assignments[p.id]===fn){ delete state.assignments[p.id]; tdName.classList.remove("highlight"); }
+            else{ state.assignments[p.id]=fn; btn.classList.add("active"); tdName.classList.add("highlight"); }
           };
-          td.appendChild(btn); tr.appendChild(td);
+
+          const badge=document.createElement("span");
+          badge.className="badge";
+          if(!enabled || isInfo) badge.textContent = "—";
+          else if(/^\d+$/.test(String(skill))) badge.textContent = "#"+skill; // tour fixe depuis Equipe
+          else badge.textContent = tour ? "#"+tour : "—"; // tour lu depuis Tours
+
+          cell.appendChild(btn); cell.appendChild(badge);
+          td.appendChild(cell); tr.appendChild(td);
         });
+
         $('#tbody').appendChild(tr);
       }
     }
 
     async function validate(){
-      // ABS auto = tous ceux sans assignation
-      const allIds=state.team.map(p=>p.id);
-      const retourAbs=allIds.filter(id=>!state.assignments[id]);
-      const payload={ date:state.date, assignments:state.assignments, retourAbs:retourAbs };
+      // ABS automatique = tous ceux sans assignation
+      const allIds = state.team.map(p=>p.id);
+      const retourAbs = allIds.filter(id=>!state.assignments[id]);
+      const payload = { date:state.date, assignments:state.assignments, retourAbs };
       try{
-        const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-        const d=await res.json(); alert(d.message||"OK");
-      }catch(e){ alert("Erreur de l’enregistrement."); }
+        const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+        if(!res.ok) throw new Error("HTTP "+res.status);
+        const d = await res.json();
+        alert(d.message || "OK");
+      }catch(e){ console.error(e); alert("Erreur de l’enregistrement."); }
     }
 
     init();
