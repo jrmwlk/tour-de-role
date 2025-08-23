@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
-    :root {
+    :root{
       --bg:#0f1115; --panel:#141821; --muted:#2a2f3a; --line:#1e2430;
       --text:#e6e6e6; --sub:#9aa3b2; --red:#d82d2d; --red-bg:#3a1212; --red-soft:#ffb3b3;
     }
@@ -20,7 +20,7 @@
       backdrop-filter: blur(6px); display:flex; align-items:center; justify-content:space-between;
       padding:8px 12px; border-bottom:1px solid var(--line); gap:8px; }
     .brand{ flex:1 1 auto; text-align:center; }
-    .logo-box { background:white; border-radius:12px; display:inline-block; padding:6px; }
+    .logo-box { background:#fff; border-radius:12px; display:inline-block; padding:6px; }
     .logo{ display:inline-block; height:52px; max-width:70vw; object-fit:contain }
     h1{ margin:6px 0 0 0; font-size:16px; letter-spacing:.3px }
     .tools{ flex:0 0 auto; display:flex; gap:8px; align-items:center }
@@ -83,7 +83,7 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbyylZcJzhDxkGpx-XuVjBkobtdD3Ofs4tOTlY2yK93tF-CatVs2v2SaM25En_z86cSK6Q/exec";
-    const state = { date: new Date().toISOString().slice(0,10), functions: [], team: [], assignments: {}, retourAbs: new Set() };
+    const state = { date: new Date().toISOString().slice(0,10), functions: [], team: [], assignments: {} };
     const $ = (s)=>document.querySelector(s);
 
     function init(){
@@ -96,9 +96,9 @@
 
     async function reload(){
       try{
-        const res = await fetch(API_URL+"?date="+state.date);
+        const res = await fetch(API_URL+"?date="+encodeURIComponent(state.date));
         const data = await res.json();
-        state.functions = data.functions||[];
+        state.functions = (data.functions||[]).filter(h=>!/^ID$|^NOM$/i.test(h));
         state.team = data.team||[];
         renderTable();
       }catch(e){ alert("Erreur chargement API"); }
@@ -110,16 +110,28 @@
       const trh=document.createElement("tr");
       trh.innerHTML="<th>Nom</th>"+state.functions.map(f=>"<th>"+f+"</th>").join("");
       $('#thead').appendChild(trh);
+
       for(const p of state.team){
         const tr=document.createElement("tr");
         const tdName=document.createElement("td"); tdName.textContent=p.nom; tr.appendChild(tdName);
         state.functions.forEach(fn=>{
           const td=document.createElement("td");
           const btn=document.createElement("button"); btn.className="assign"; btn.textContent=fn;
+
+          const raw = p.skills ? String(p.skills[fn]||"").trim().toUpperCase() : "";
+          const canDo = raw==="X" || raw==="C" || (!isNaN(+raw) && +raw>=1 && +raw<=15);
+          btn.disabled = !canDo;
+
           btn.onclick=()=>{
+            if(btn.disabled) return;
             tr.querySelectorAll(".assign").forEach(b=>b.classList.remove("active"));
-            state.assignments[p.id]=fn; btn.classList.add("active");
-            tdName.classList.add("highlight");
+            if(state.assignments[p.id]===fn){
+              delete state.assignments[p.id];
+              tdName.classList.remove("highlight");
+            }else{
+              state.assignments[p.id]=fn; btn.classList.add("active");
+              tdName.classList.add("highlight");
+            }
           };
           td.appendChild(btn); tr.appendChild(td);
         });
