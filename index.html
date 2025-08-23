@@ -2,21 +2,28 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Tour de rôle</title>
+  <!-- Icônes iPhone / favicon -->
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="icon" href="logo.png" type="image/png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
     :root{
       --bg:#0f1115; --panel:#141821; --muted:#2a2f3a; --line:#1e2430;
-      --text:#e6e6e6; --sub:#9aa3b2; --blue:#4da6ff;
+      --text:#e6e6e6; --sub:#9aa3b2; --red:#d82d2d; --red-bg:#3a1212; --red-soft:#ffb3b3;
     }
     *{box-sizing:border-box}
     body{ margin:0; background:var(--bg); color:var(--text);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji"; }
     header{ position:sticky; top:0; z-index:5; background:linear-gradient(180deg,var(--bg),rgba(15,17,21,.84));
       backdrop-filter: blur(6px); display:flex; align-items:center; justify-content:space-between;
-      padding:12px 12px; border-bottom:1px solid var(--line); }
-    h1{margin:0; font-size:16px; letter-spacing:.3px}
-    .tools{display:flex; gap:8px; align-items:center}
+      padding:8px 12px; border-bottom:1px solid var(--line); gap:8px; }
+    .brand{ flex:1 1 auto; text-align:center; }
+    .logo{ display:inline-block; height:52px; max-width:70vw; object-fit:contain }
+    h1{ margin:6px 0 0 0; font-size:16px; letter-spacing:.3px }
+    .tools{ flex:0 0 auto; display:flex; gap:8px; align-items:center }
     input[type="date"]{ background:#12151c; color:var(--text); border:1px solid var(--line); padding:6px 8px; border-radius:8px; font-size:14px; }
     .btn{ background:#1a1f29; color:var(--text); border:1px solid var(--line); padding:6px 10px; border-radius:10px; font-size:13px; cursor:pointer; }
     .btn:hover{background:#212837} .btn.approve{border-color:#214c2b; background:#142418}
@@ -30,13 +37,15 @@
     th:first-child, td:first-child{ position:sticky; left:0; z-index:3; background:linear-gradient(90deg,#12161f 0%, #141821 30%);
       text-align:left; padding-left:10px; min-width: 160px; white-space: nowrap; }
     thead th:first-child{ z-index:5 }
-    td.highlight{ color: var(--blue); font-weight: 600; }
+    /* Highlight NOM en rouge quand affecté */
+    td.highlight{ color: var(--red); font-weight: 700; }
     .cell{ display:flex; align-items:center; justify-content:center; gap:4px; flex-direction: column; }
     .assign{ min-width:52px; padding:5px 6px; border-radius:8px; border:1px solid var(--muted); background:#171c25; cursor:pointer; user-select:none; font-size:11px; line-height:1.1; }
     .assign[disabled]{opacity:.28; cursor:not-allowed}
-    .assign.active{ border-color:#2d7bd8; box-shadow:0 0 0 2px rgba(45,123,216,.25) inset}
-    .assign.driving{ border-color:#355a8a; background:#131a25 }   /* C = conduite */
-    .assign.fixed{ border-color:#2b4d2e; background:#151e16 }     /* nombre = tour fixe */
+    /* Bouton actif en ROUGE */
+    .assign.active{ border-color:var(--red); background:var(--red-bg); color:var(--red-soft); box-shadow:0 0 0 2px rgba(216,45,45,.25) inset }
+    .assign.driving{ border-color:#355a2a; background:#131a25 }   /* C = conduite (état neutre) */
+    .assign.fixed{ border-color:#2b4d2e; background:#151e16 }     /* nombre = tour fixe (état neutre) */
     .assign.info{ border-color:#3a3f4a; background:#1a1f28 }      /* fonctions info-only (pas de tour) */
     .badge{ display:inline-flex; align-items:center; justify-content:center; min-width:24px; padding:1px 6px; border-radius:999px; font-size:10px;
       border:1px solid var(--muted); color:var(--sub); }
@@ -48,15 +57,24 @@
       h1{ font-size:15px } input[type="date"]{ font-size:13px; padding:5px 6px } .btn{ font-size:12px; padding:6px 8px }
       th:first-child, td:first-child{ min-width: 140px } thead th{ font-size:11px; padding:6px 4px } tbody td{ font-size:11px; padding:4px 3px }
       .assign{ min-width:46px; padding:4px 5px; border-radius:7px; font-size:10.5px } .badge{ min-width:22px; font-size:9.5px; padding:1px 5px }
+      .logo{ height:44px }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Tour de rôle</h1>
     <div class="tools">
       <input type="date" id="datePicker"/>
       <button class="btn" id="reloadBtn" title="Recharger">↻</button>
+    </div>
+    <div class="brand">
+      <img src="logo.png" alt="Logo" class="logo">
+      <h1>Tour de rôle</h1>
+    </div>
+    <div class="tools" aria-hidden="true" style="opacity:0; pointer-events:none">
+      <!-- espaceur pour centrer parfaitement la brand -->
+      <input type="date" style="visibility:hidden; width:0">
+      <button class="btn" style="visibility:hidden">↻</button>
     </div>
   </header>
 
@@ -79,7 +97,7 @@
     // Fonctions sans tour
     const INFO_ONLY = new Set(["VL","CEQ","FOR","DEL"]);
     const DEFAULT_FUNCTIONS = ["CM","LIV","HC","DK","DKT","STR","VL","CPO","CPV","SPE","FOR","DEL","CEQ"];
-    const API_URL = ""; // ⚠️ colle ici ton URL WebApp si tu veux fixer en dur
+    const API_URL = "https://script.google.com/macros/s/AKfycbyylZcJzhDxkGpx-XuVjBkobtdD3Ofs4tOTlY2yK93tF-CatVs2v2SaM25En_z86cSK6Q/exec";
 
     const state = {
       date: new Date().toISOString().slice(0,10),
@@ -103,18 +121,10 @@
     async function reload(){
       setNotice('Chargement…');
       try{
-        const api = API_URL || localStorage.getItem('API_URL');
-        let data;
-        if(api){
-          data = await fetchData(api, state.date);
-          localStorage.setItem('API_URL', api);
-          setNotice('Données chargées depuis l’API.');
-        }else{
-          data = mockData(state.date);
-          setNotice('Mode démo (colle API dans localStorage:API_URL via console, ou modifie le fichier).');
-        }
+        const data = await fetchData(API_URL, state.date);
         applyData(data);
         renderTable();
+        setNotice('Données chargées depuis l’API.');
       }catch(e){
         console.error(e);
         setNotice('<b>Erreur</b> de chargement API.');
@@ -132,7 +142,7 @@
       state.functions = Array.from(data.functions || []).filter(f => !/^ID$|^NOM$/i.test(f));
       if(state.functions.length === 0) state.functions = DEFAULT_FUNCTIONS;
       state.team = data.team || [];
-      state.assignments = data.assignments || {};
+      state.assignments = data.assignments || { };
       state.retourAbs = new Set();
     }
 
@@ -181,7 +191,6 @@
 
           const badge = document.createElement('span');
           badge.className = 'badge' + (isInfoOnly ? ' dim' : '');
-          // Badge logique : si pas la fonction -> '—'
           let badgeText = '—';
           if(info.canDo){
             if(isInfoOnly){ badgeText = '—'; }
@@ -214,7 +223,6 @@
           tr.appendChild(td);
         });
 
-        // Retour ABS
         const tdAbs = document.createElement('td');
         const cellAbs = document.createElement('div'); cellAbs.className = 'cell';
         const btnAbs = document.createElement('button'); btnAbs.className = 'assign abs'; btnAbs.textContent = 'RETOUR ABS';
@@ -234,11 +242,9 @@
     }
 
     async function validate(){
-      const api = API_URL || localStorage.getItem('API_URL');
-      if(!api){ alert('Pas d’API configurée'); return; }
       const payload = { date: state.date, assignments: state.assignments, retourAbs: Array.from(state.retourAbs) };
       try{
-        const res = await fetch(api, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         if(!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json(); alert(data?.message || 'Enregistré !');
       }catch(e){ console.error(e); alert('Erreur lors de l’enregistrement.'); }
