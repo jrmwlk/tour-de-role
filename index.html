@@ -135,9 +135,10 @@
             else{ state.assignments[p.id]=fn; btn.classList.add("active"); tdName.classList.add("highlight"); }
           };
 
-          const badge=document.createElement("span"); badge.className="badge";
+          const badge=document.createElement("span");
+          badge.className="badge";
           if(!enabled || isInfo) badge.textContent = "—";
-          else if(/^(\d+)$/.test(String(skill))) badge.textContent = "#"+skill;
+          else if(/^(\\d+)$/.test(String(skill))) badge.textContent = "#"+skill;
           else badge.textContent = tour ? "#"+tour : "—";
 
           cell.appendChild(btn); cell.appendChild(badge);
@@ -154,11 +155,16 @@
       const payload = { date:state.date, assignments:state.assignments, retourAbs };
       try{
         const res = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
-        if(!res.ok){ const t = await res.text(); throw new Error("HTTP "+res.status+" -> "+t); }
-        const d = await res.json();
-        alert(d.message || "OK");
-        await reload();
-      }catch(e){ console.error(e); alert("Erreur de l’enregistrement."); }
+        const text = await res.text();
+        try{
+          const json = JSON.parse(text);
+          if(json.error) throw new Error(json.error);
+          alert(json.message || "OK");
+          await reload();
+        }catch(parseErr){
+          throw new Error(text);
+        }
+      }catch(e){ console.error(e); alert("Erreur de l’enregistrement :\n"+e.message); }
     }
     init();
   </script>
