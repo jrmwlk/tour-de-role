@@ -4,23 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Tour de rôle</title>
-  <!-- Icônes iPhone / favicon -->
   <link rel="apple-touch-icon" href="logo.png">
   <link rel="icon" href="logo.png" type="image/png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
-    :root{
+    :root {
       --bg:#0f1115; --panel:#141821; --muted:#2a2f3a; --line:#1e2430;
       --text:#e6e6e6; --sub:#9aa3b2; --red:#d82d2d; --red-bg:#3a1212; --red-soft:#ffb3b3;
     }
     *{box-sizing:border-box}
     body{ margin:0; background:var(--bg); color:var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
     header{ position:sticky; top:0; z-index:5; background:linear-gradient(180deg,var(--bg),rgba(15,17,21,.84));
       backdrop-filter: blur(6px); display:flex; align-items:center; justify-content:space-between;
       padding:8px 12px; border-bottom:1px solid var(--line); gap:8px; }
     .brand{ flex:1 1 auto; text-align:center; }
+    .logo-box { background:white; border-radius:12px; display:inline-block; padding:6px; }
     .logo{ display:inline-block; height:52px; max-width:70vw; object-fit:contain }
     h1{ margin:6px 0 0 0; font-size:16px; letter-spacing:.3px }
     .tools{ flex:0 0 auto; display:flex; gap:8px; align-items:center }
@@ -28,49 +28,25 @@
     .btn{ background:#1a1f29; color:var(--text); border:1px solid var(--line); padding:6px 10px; border-radius:10px; font-size:13px; cursor:pointer; }
     .btn:hover{background:#212837} .btn.approve{border-color:#214c2b; background:#142418}
     .wrap{padding:12px}
-    .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:12px; background:var(--panel); margin-top:8px; position: relative; }
+    .table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--panel); margin-top:8px; }
     table{ width:100%; border-collapse:separate; border-spacing:0; min-width: 720px; }
     thead th{ font-weight:600; font-size:12px; color:var(--sub); background:#12161f; border-bottom:1px solid var(--line);
-      padding:8px 6px; text-align:center; position: sticky; top: 0; z-index: 4; box-shadow: 0 2px 0 0 var(--line); }
+      padding:8px 6px; text-align:center; position: sticky; top: 0; z-index: 4; }
     tbody td{ border-bottom:1px solid var(--line); text-align:center; padding:4px 4px; font-size:12px; }
-    tbody tr:last-child td{border-bottom:none}
-    th:first-child, td:first-child{ position:sticky; left:0; z-index:3; background:linear-gradient(90deg,#12161f 0%, #141821 30%);
+    th:first-child, td:first-child{ position:sticky; left:0; z-index:3; background:#12161f;
       text-align:left; padding-left:10px; min-width: 160px; white-space: nowrap; }
-    thead th:first-child{ z-index:5 }
-    /* Highlight NOM en rouge quand affecté */
     td.highlight{ color: var(--red); font-weight: 700; }
     .cell{ display:flex; align-items:center; justify-content:center; gap:4px; flex-direction: column; }
-    .assign{ min-width:52px; padding:5px 6px; border-radius:8px; border:1px solid var(--muted); background:#171c25; cursor:pointer; user-select:none; font-size:11px; line-height:1.1; }
-    .assign[disabled]{opacity:.28; cursor:not-allowed}
-    /* Bouton actif en ROUGE */
-    .assign.active{ border-color:var(--red); background:var(--red-bg); color:var(--red-soft); box-shadow:0 0 0 2px rgba(216,45,45,.25) inset }
-    .assign.driving{ border-color:#355a8a; background:#131a25 }   /* C = conduite (état neutre) */
-    .assign.fixed{ border-color:#2b4d2e; background:#151e16 }     /* nombre = tour fixe (état neutre) */
-    .assign.info{ border-color:#3a3f4a; background:#1a1f28 }      /* fonctions info-only (pas de tour) */
+    .assign{ min-width:52px; padding:5px 6px; border-radius:8px; border:1px solid var(--muted); background:#171c25; cursor:pointer; font-size:11px; }
+    .assign.active{ border-color:var(--red); background:var(--red-bg); color:var(--red-soft); }
     .badge{ display:inline-flex; align-items:center; justify-content:center; min-width:24px; padding:1px 6px; border-radius:999px; font-size:10px;
       border:1px solid var(--muted); color:var(--sub); }
-    .badge.dim{ opacity:.6 }
-    .abs{ background:#2a1a1a; border-color:#5a2d2d; color:#ffb3b3 }
     .footbar{ display:flex; gap:8px; justify-content:center; margin:12px 0 2px }
     .hidden{ display:none !important }
-
-    /* Carte historique */
-    .history-wrap{ margin-top:16px }
-    .card{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px }
-    .card h2{ margin:0 0 8px 0; font-size:14px; color:var(--sub) }
-    .hist-table{ width:100%; border-collapse:separate; border-spacing:0 }
-    .hist-table th, .hist-table td{ border-bottom:1px solid var(--line); padding:8px 6px; text-align:left; font-size:12px }
-    .hist-table th{ color:var(--sub); background:#12161f; position:sticky; top:0 }
-    .tag{ display:inline-block; border:1px solid var(--muted); border-radius:999px; padding:2px 6px; font-size:11px; margin:1px 4px 1px 0; color:var(--sub) }
-    .tag.fn{ border-color:#2d7bd8 }
-    .tag.abs{ border-color:#5a2d2d; color:#ffb3b3 }
-
     @media (max-width: 430px){
-      h1{ font-size:15px } input[type="date"]{ font-size:13px; padding:5px 6px } .btn{ font-size:12px; padding:6px 8px }
-      th:first-child, td:first-child{ min-width: 140px } thead th{ font-size:11px; padding:6px 4px } tbody td{ font-size:11px; padding:4px 3px }
-      .assign{ min-width:46px; padding:4px 5px; border-radius:7px; font-size:10.5px } .badge{ min-width:22px; font-size:9.5px; padding:1px 5px }
       .logo{ height:44px }
-      .hist-table th, .hist-table td{ font-size:11px; padding:6px 4px }
+      h1{ font-size:15px }
+      .assign{ min-width:46px; padding:4px 5px; font-size:10.5px }
     }
   </style>
 </head>
@@ -81,260 +57,85 @@
       <button class="btn" id="reloadBtn" title="Recharger">↻</button>
     </div>
     <div class="brand">
-      <img src="logo.png" alt="Logo" class="logo">
+      <div class="logo-box">
+        <img src="logo.png" alt="Logo" class="logo">
+      </div>
       <h1>Tour de rôle</h1>
     </div>
-    <div class="tools" aria-hidden="true" style="opacity:0; pointer-events:none">
+    <div class="tools" style="opacity:0; pointer-events:none">
       <input type="date" style="visibility:hidden; width:0">
       <button class="btn" style="visibility:hidden">↻</button>
     </div>
   </header>
 
   <div class="wrap">
-    <div id="notice" class="sticky-note"></div>
-
+    <div id="notice"></div>
     <div class="table-wrap">
       <table id="roleTable" class="hidden">
         <thead id="thead"></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
-
     <div class="footbar">
       <button class="btn approve" id="validateBtn">Valider</button>
-    </div>
-
-    <!-- HISTORIQUE -->
-    <div class="history-wrap" id="historySection" style="display:none">
-      <div class="card">
-        <h2>Historique récent</h2>
-        <div id="historyNotice" class="sticky-note" style="margin-bottom:8px"></div>
-        <div class="table-wrap" style="border:none; background:transparent">
-          <table class="hist-table" id="historyTable">
-            <thead>
-              <tr><th>Date</th><th>Affectations</th><th>Retours ABS</th></tr>
-            </thead>
-            <tbody id="historyBody"></tbody>
-          </table>
-        </div>
-      </div>
     </div>
   </div>
 
   <script>
-    const INFO_ONLY = new Set(["VL","CEQ","FOR","DEL"]);
-    const DEFAULT_FUNCTIONS = ["CM","LIV","HC","DK","DKT","STR","VL","CPO","CPV","SPE","FOR","DEL","CEQ"];
     const API_URL = "https://script.google.com/macros/s/AKfycbyylZcJzhDxkGpx-XuVjBkobtdD3Ofs4tOTlY2yK93tF-CatVs2v2SaM25En_z86cSK6Q/exec";
-    const HISTORY_DAYS = 7;
-
-    const state = {
-      date: new Date().toISOString().slice(0,10),
-      functions: [],
-      team: [],
-      assignments: {},   // {id: "FUNC"}
-      retourAbs: new Set()
-    };
-
-    const $ = (sel) => document.querySelector(sel);
-    function setNotice(msg){ $('#notice').innerHTML = msg || ""; }
+    const state = { date: new Date().toISOString().slice(0,10), functions: [], team: [], assignments: {}, retourAbs: new Set() };
+    const $ = (s)=>document.querySelector(s);
 
     function init(){
       $('#datePicker').value = state.date;
-      $('#reloadBtn').addEventListener('click', reload);
-      $('#validateBtn').addEventListener('click', validate);
-      $('#datePicker').addEventListener('change', () => { state.date = $('#datePicker').value; reload(); });
+      $('#reloadBtn').onclick = reload;
+      $('#validateBtn').onclick = validate;
+      $('#datePicker').onchange = ()=>{ state.date=$('#datePicker').value; reload(); };
       reload();
     }
 
     async function reload(){
-      setNotice('Chargement…');
       try{
-        const data = await fetchData(API_URL, state.date);
-        applyData(data);
+        const res = await fetch(API_URL+"?date="+state.date);
+        const data = await res.json();
+        state.functions = data.functions||[];
+        state.team = data.team||[];
         renderTable();
-        setNotice('Données chargées depuis l’API.');
-        await loadHistory();
-      }catch(e){
-        console.error(e);
-        setNotice('<b>Erreur</b> de chargement API.');
-      }
-    }
-
-    async function fetchData(apiUrl, date){
-      const url = apiUrl + (apiUrl.includes('?') ? '&' : '?') + 'date=' + encodeURIComponent(date);
-      const res = await fetch(url, {headers:{'Accept':'application/json'}});
-      if(!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.json();
-    }
-
-    function applyData(data){
-      state.functions = Array.from(data.functions || []).filter(f => !/^ID$|^NOM$/i.test(f));
-      if(state.functions.length === 0) state.functions = DEFAULT_FUNCTIONS;
-      state.team = data.team || [];
-      state.assignments = data.assignments || {};
-      state.retourAbs = new Set();
-    }
-
-    function parseSkill(valRaw){
-      if(valRaw === null || valRaw === undefined) return {canDo:false, type:null, fixedRank:null};
-      const s = String(valRaw).trim().toUpperCase();
-      if(s === 'X') return {canDo:true, type:'normal',  fixedRank:null};
-      if(s === 'C') return {canDo:true, type:'driving', fixedRank:null};
-      const n = Number(s);
-      if(Number.isFinite(n) && n >= 1 && n <= 15) return {canDo:true, type:'fixed', fixedRank:n};
-      return {canDo:false, type:null, fixedRank:null};
+      }catch(e){ alert("Erreur chargement API"); }
     }
 
     function renderTable(){
-      const thead = $('#thead'), tbody = $('#tbody');
       $('#roleTable').classList.remove('hidden');
-      thead.innerHTML = ""; tbody.innerHTML = "";
-
-      const trh = document.createElement('tr');
-      const thName = document.createElement('th'); thName.textContent = "Nom"; trh.appendChild(thName);
-      state.functions.forEach(fn => { const th=document.createElement('th'); th.textContent=fn; trh.appendChild(th); });
-      const thAbs = document.createElement('th'); thAbs.textContent = "Retour ABS"; trh.appendChild(thAbs);
-      thead.appendChild(trh);
-
-      for(const person of state.team){
-        const tr = document.createElement('tr');
-        const tdName = document.createElement('td'); tdName.textContent = person.nom || ""; tr.appendChild(tdName);
-
-        state.functions.forEach(fn => {
-          const td = document.createElement('td');
-          const cell = document.createElement('div'); cell.className = 'cell';
-
-          const raw = person.skills ? person.skills[fn] : '';
-          const info = parseSkill(raw);
-          const isInfoOnly = INFO_ONLY.has(fn);
-          const tour = person.tours && (person.tours[fn] ?? "");
-
-          const btn = document.createElement('button');
-          btn.className = 'assign';
-          if(info.type === 'driving') btn.classList.add('driving');
-          if(info.type === 'fixed')   btn.classList.add('fixed');
-          if(isInfoOnly)              btn.classList.add('info');
-          btn.textContent = fn;
-          btn.disabled = !info.canDo;
-
-          const badge = document.createElement('span');
-          badge.className = 'badge' + (isInfoOnly ? ' dim' : '');
-          let badgeText = '—';
-          if(info.canDo){
-            if(isInfoOnly){ badgeText = '—'; }
-            else if(info.type === 'fixed' && info.fixedRank){ badgeText = '#' + info.fixedRank; }
-            else if(tour !== "" && tour !== undefined){ badgeText = '#' + tour; }
-          }
-          badge.textContent = badgeText;
-
-          if(state.assignments[person.id] === fn){ btn.classList.add('active'); tdName.classList.add('highlight'); }
-
-          btn.addEventListener('click', () => {
-            if(btn.disabled) return;
-            if(state.assignments[person.id] === fn){
-              delete state.assignments[person.id];
-              btn.classList.remove('active');
-            }else{
-              tr.querySelectorAll('.assign.active').forEach(b => b.classList.remove('active'));
-              state.assignments[person.id] = fn;
-              btn.classList.add('active');
-              state.retourAbs.delete(person.id);
-              const absBtn = tr.querySelector('.assign.abs'); if(absBtn) absBtn.classList.remove('active');
-            }
-            if(state.assignments[person.id]) tdName.classList.add('highlight');
-            else tdName.classList.remove('highlight');
-          });
-
-          cell.appendChild(btn);
-          cell.appendChild(badge);
-          td.appendChild(cell);
-          tr.appendChild(td);
+      $('#thead').innerHTML=""; $('#tbody').innerHTML="";
+      const trh=document.createElement("tr");
+      trh.innerHTML="<th>Nom</th>"+state.functions.map(f=>"<th>"+f+"</th>").join("");
+      $('#thead').appendChild(trh);
+      for(const p of state.team){
+        const tr=document.createElement("tr");
+        const tdName=document.createElement("td"); tdName.textContent=p.nom; tr.appendChild(tdName);
+        state.functions.forEach(fn=>{
+          const td=document.createElement("td");
+          const btn=document.createElement("button"); btn.className="assign"; btn.textContent=fn;
+          btn.onclick=()=>{
+            tr.querySelectorAll(".assign").forEach(b=>b.classList.remove("active"));
+            state.assignments[p.id]=fn; btn.classList.add("active");
+            tdName.classList.add("highlight");
+          };
+          td.appendChild(btn); tr.appendChild(td);
         });
-
-        const tdAbs = document.createElement('td');
-        const cellAbs = document.createElement('div'); cellAbs.className = 'cell';
-        const btnAbs = document.createElement('button'); btnAbs.className = 'assign abs'; btnAbs.textContent = 'RETOUR ABS';
-        btnAbs.addEventListener('click', () => {
-          delete state.assignments[person.id];
-          state.retourAbs.add(person.id);
-          tr.querySelectorAll('.assign').forEach(b => b.classList.remove('active'));
-          btnAbs.classList.add('active');
-          tdName.classList.remove('highlight');
-        });
-        cellAbs.appendChild(btnAbs);
-        tdAbs.appendChild(cellAbs);
-        tr.appendChild(tdAbs);
-
-        tbody.appendChild(tr);
+        $('#tbody').appendChild(tr);
       }
     }
 
     async function validate(){
-      const payload = { date: state.date, assignments: state.assignments, retourAbs: Array.from(state.retourAbs) };
+      // ABS auto = tous ceux sans assignation
+      const allIds=state.team.map(p=>p.id);
+      const retourAbs=allIds.filter(id=>!state.assignments[id]);
+      const payload={ date:state.date, assignments:state.assignments, retourAbs:retourAbs };
       try{
-        const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        if(!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json(); alert(data?.message || 'Enregistré !');
-        await loadHistory();
-      }catch(e){ console.error(e); alert('Erreur lors de l’enregistrement.'); }
-    }
-
-    // -------- Historique --------
-    async function loadHistory(){
-      const url = API_URL + (API_URL.includes('?') ? '&' : '?') + 'withHistory=1&days=' + encodeURIComponent(HISTORY_DAYS);
-      const body = $('#historyBody');
-      const section = $('#historySection');
-      const notice = $('#historyNotice');
-      notice.textContent = 'Chargement de l’historique…';
-      section.style.display = 'block';
-      body.innerHTML = '';
-
-      try{
-        const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
-        if(!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        if(!data || !Array.isArray(data.history) || data.history.length === 0){
-          notice.textContent = 'Historique non disponible.';
-          return;
-        }
-        notice.textContent = '';
-        for(const day of data.history){
-          const tr = document.createElement('tr');
-          const tdDate = document.createElement('td'); tdDate.textContent = day.date || ''; tr.appendChild(tdDate);
-
-          const tdA = document.createElement('td');
-          const tdR = document.createElement('td');
-
-          if(Array.isArray(day.assignments) && day.assignments.length){
-            day.assignments.forEach(a => {
-              const span = document.createElement('span');
-              span.className = 'tag fn';
-              span.textContent = (a.nom ? a.nom + ' ' : '') + '(' + (a.fonction || a.fn || '?') + ')';
-              tdA.appendChild(span);
-            });
-          } else {
-            tdA.innerHTML = '<span class="tag">—</span>';
-          }
-
-          if(Array.isArray(day.retourAbs) && day.retourAbs.length){
-            day.retourAbs.forEach(p => {
-              const span = document.createElement('span');
-              span.className = 'tag abs';
-              span.textContent = p.nom || p.id || 'ID?';
-              tdR.appendChild(span);
-            });
-          } else {
-            tdR.innerHTML = '<span class="tag">—</span>';
-          }
-
-          tr.appendChild(tdA);
-          tr.appendChild(tdR);
-          body.appendChild(tr);
-        }
-      }catch(e){
-        console.error(e);
-        notice.textContent = 'Historique non disponible.';
-      }
+        const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        const d=await res.json(); alert(d.message||"OK");
+      }catch(e){ alert("Erreur de l’enregistrement."); }
     }
 
     init();
