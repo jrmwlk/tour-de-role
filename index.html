@@ -57,7 +57,6 @@
     <div class="tools">
       <input type="date" id="datePicker"/>
       <button class="btn" id="reloadBtn" title="Recharger">↻</button>
-      <button class="btn" id="settingsBtn" title="Paramètres">⚙️</button>
     </div>
   </header>
 
@@ -77,15 +76,16 @@
   </div>
 
   <script>
-    // Fonctions sans tour (informative uniquement)
+    // Fonctions sans tour
     const INFO_ONLY = new Set(["VL","CEQ","FOR","DEL"]);
     const DEFAULT_FUNCTIONS = ["CM","LIV","HC","DK","DKT","STR","VL","CPO","CPV","SPE","FOR","DEL","CEQ"];
+    const API_URL = ""; // ⚠️ colle ici ton URL WebApp si tu veux fixer en dur
+
     const state = {
-      apiUrl: localStorage.getItem('API_URL') || "",
       date: new Date().toISOString().slice(0,10),
       functions: [],
       team: [],
-      assignments: {},
+      assignments: {},   // {id: "FUNC"}
       retourAbs: new Set()
     };
 
@@ -96,39 +96,36 @@
       $('#datePicker').value = state.date;
       $('#reloadBtn').addEventListener('click', reload);
       $('#validateBtn').addEventListener('click', validate);
+      $('#datePicker').addEventListener('change', () => { state.date = $('#datePicker').value; reload(); });
       reload();
     }
 
     async function reload(){
       setNotice('Chargement…');
       try{
-        const data = mockData(state.date); // Remplacer par fetch API GAS plus tard
+        const api = API_URL || localStorage.getItem('API_URL');
+        let data;
+        if(api){
+          data = await fetchData(api, state.date);
+          localStorage.setItem('API_URL', api);
+          setNotice('Données chargées depuis l’API.');
+        }else{
+          data = mockData(state.date);
+          setNotice('Mode démo (colle API dans localStorage:API_URL via console, ou modifie le fichier).');
+        }
         applyData(data);
         renderTable();
-        setNotice('Mode démo. Brancher API GAS pour données réelles.');
       }catch(e){
         console.error(e);
-        setNotice('<b>Erreur</b> de chargement.');
+        setNotice('<b>Erreur</b> de chargement API.');
       }
     }
 
-    // --- DEMO DATA (à remplacer par API GAS) ---
-    function mockData(date){
-      const team = [
-        {id:"77836", nom:"SCHITZ GUILLAUME"},
-        {id:"77985", nom:"GUIRAMAND JEROME"},
-        {id:"78028", nom:"MALATRAIT JULIEN"},
-        {id:"78090", nom:"SIMITSIDIS YOHAN"}
-      ];
-      // Valeurs possibles: 'X', 'C', '1'..'15', ''.
-      const skills = {
-        "77836": {CM:'X', LIV:'X', HC:'X', STR:'',  VL:'X',  CPO:'',  SPE:'', FOR:'X', DEL:'X', CEQ:'X', DK:'', DKT:'', CPV:''},
-        "77985": {CM:'',  LIV:'',  HC:'X', STR:'C',  VL:'',  CPO:'X',  SPE:'', FOR:'',  DEL:'',  CEQ:'',  DK:'X', DKT:'X', CPV:''},
-        "78028": {CM:'',  LIV:'',  HC:'X', STR:'X',  VL:'',  CPO:'12', SPE:'X', FOR:'',  DEL:'',  CEQ:'',  DK:'X', DKT:'',  CPV:''},
-        "78090": {CM:'',  LIV:'',  HC:'X', STR:'',  VL:'',  CPO:'',  SPE:'', FOR:'',  DEL:'',  CEQ:'',  DK:'X', DKT:'X', CPV:''},
-      };
-      const tours = {}; for(const id in skills){ tours[id] = {}; DEFAULT_FUNCTIONS.forEach(f => tours[id][f] = Math.floor(Math.random()*12)+1); }
-      return {date, functions: DEFAULT_FUNCTIONS, team: team.map(p => ({ id:p.id, nom:p.nom, skills: skills[p.id] || {}, tours: tours[p.id] || {} })), assignments: {} };
+    async function fetchData(apiUrl, date){
+      const url = apiUrl + (apiUrl.includes('?') ? '&' : '?') + 'date=' + encodeURIComponent(date);
+      const res = await fetch(url, {headers:{'Accept':'application/json'}});
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
     }
 
     function applyData(data){
@@ -140,10 +137,10 @@
     }
 
     function parseSkill(valRaw){
-      // Retourne {canDo, type: 'normal'|'driving'|'fixed'|null, fixedRank:null|number}
+      // 'X', 'C', '1..15' -> activable ; sinon non
       if(valRaw === null || valRaw === undefined) return {canDo:false, type:null, fixedRank:null};
       const s = String(valRaw).trim().toUpperCase();
-      if(s === 'X') return {canDo:true, type:'normal', fixedRank:null};
+      if(s === 'X') return {canDo:true, type:'normal',  fixedRank:null};
       if(s === 'C') return {canDo:true, type:'driving', fixedRank:null};
       const n = Number(s);
       if(Number.isFinite(n) && n >= 1 && n <= 15) return {canDo:true, type:'fixed', fixedRank:n};
@@ -184,9 +181,14 @@
 
           const badge = document.createElement('span');
           badge.className = 'badge' + (isInfoOnly ? ' dim' : '');
-          badge.textContent = isInfoOnly ? '—' :
-                              (info.type === 'fixed' && info.fixedRank ? ("#" + info.fixedRank) :
-                               (tour !== "" && tour !== undefined ? "#" + tour : "-"));
+          // Badge logique : si pas la fonction -> '—'
+          let badgeText = '—';
+          if(info.canDo){
+            if(isInfoOnly){ badgeText = '—'; }
+            else if(info.type === 'fixed' && info.fixedRank){ badgeText = '#' + info.fixedRank; }
+            else if(tour !== "" && tour !== undefined){ badgeText = '#' + tour; }
+          }
+          badge.textContent = badgeText;
 
           if(state.assignments[person.id] === fn){ btn.classList.add('active'); tdName.classList.add('highlight'); }
 
@@ -232,10 +234,14 @@
     }
 
     async function validate(){
-      // Rappel: la règle "DKT deviennent 1er DK (sauf tours fixes)" sera traitée côté backend.
+      const api = API_URL || localStorage.getItem('API_URL');
+      if(!api){ alert('Pas d’API configurée'); return; }
       const payload = { date: state.date, assignments: state.assignments, retourAbs: Array.from(state.retourAbs) };
-      console.log(payload);
-      alert("Validation (démo): " + JSON.stringify(payload));
+      try{
+        const res = await fetch(api, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json(); alert(data?.message || 'Enregistré !');
+      }catch(e){ console.error(e); alert('Erreur lors de l’enregistrement.'); }
     }
 
     init();
