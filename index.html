@@ -7,7 +7,7 @@
   <style>
     :root{
       --bg:#0f1115; --panel:#141821; --muted:#2a2f3a; --line:#1e2430;
-      --text:#e6e6e6; --sub:#9aa3b2; --brand:#6bc2ff; --ok:#3fb950; --warn:#f2a74b;
+      --text:#e6e6e6; --sub:#9aa3b2; --brand:#6bc2ff;
     }
     *{box-sizing:border-box}
     body{
@@ -16,58 +16,67 @@
     }
     header{
       position:sticky; top:0; z-index:5;
-      background:linear-gradient(180deg,var(--bg),rgba(15,17,21,.8));
+      background:linear-gradient(180deg,var(--bg),rgba(15,17,21,.84));
       backdrop-filter: blur(6px);
       display:flex; align-items:center; justify-content:space-between;
-      padding:14px 16px; border-bottom:1px solid var(--line);
+      padding:12px 12px; border-bottom:1px solid var(--line);
     }
-    h1{margin:0; font-size:18px; letter-spacing:.3px}
+    h1{margin:0; font-size:16px; letter-spacing:.3px}
     .tools{display:flex; gap:8px; align-items:center}
     input[type="date"]{
       background:#12151c; color:var(--text); border:1px solid var(--line);
-      padding:6px 10px; border-radius:8px; font-size:14px;
+      padding:6px 8px; border-radius:8px; font-size:14px;
     }
     .btn{
       background:#1a1f29; color:var(--text); border:1px solid var(--line);
-      padding:8px 12px; border-radius:10px; font-size:14px; cursor:pointer;
+      padding:6px 10px; border-radius:10px; font-size:13px; cursor:pointer;
     }
     .btn:hover{background:#212837}
     .btn.primary{border-color:#2a394f}
     .btn.approve{border-color:#214c2b; background:#142418}
-    .wrap{padding:16px; max-width:1400px; margin:0 auto}
+    .wrap{padding:12px}
+    .table-wrap{
+      overflow-x:auto; -webkit-overflow-scrolling:touch;
+      border:1px solid var(--line); border-radius:12px; background:var(--panel);
+    }
     table{
-      width:100%; border-collapse:separate; border-spacing:0; margin-top:10px;
-      background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+      width:100%; border-collapse:separate; border-spacing:0;
+      min-width: 720px; /* permet le scroll horizontal sur petits écrans */
     }
     thead th{
-      font-weight:600; font-size:13px; color:var(--sub);
+      font-weight:600; font-size:12px; color:var(--sub);
       background:#12161f; border-bottom:1px solid var(--line);
-      padding:10px 8px; text-align:center; position:sticky; top:54px; z-index:4;
+      padding:8px 6px; text-align:center; position:sticky; top:48px; z-index:4;
     }
     tbody td{
-      border-bottom:1px solid var(--line); text-align:center; padding:6px 6px; font-size:13px;
+      border-bottom:1px solid var(--line); text-align:center; padding:4px 4px; font-size:12px;
     }
     tbody tr:last-child td{border-bottom:none}
-    th:first-child, td:first-child{ text-align:left; padding-left:12px }
+    th:first-child, td:first-child{
+      position:sticky; left:0; z-index:3; background:linear-gradient(90deg,#12161f 0%, #141821 30%);
+      text-align:left; padding-left:10px;
+      min-width: 160px; /* largeur fixe pour le nom */
+      white-space: nowrap;
+    }
     .cell{
-      display:flex; align-items:center; justify-content:center; gap:8px;
+      display:flex; align-items:center; justify-content:center; gap:4px;
+      flex-direction: column; /* bouton au-dessus, badge en dessous */
     }
     .assign{
-      min-width:58px; padding:6px 8px; border-radius:9px; border:1px solid var(--muted);
-      background:#171c25; cursor:pointer; user-select:none; font-size:12px;
+      min-width:52px; padding:5px 6px; border-radius:8px; border:1px solid var(--muted);
+      background:#171c25; cursor:pointer; user-select:none; font-size:11px; line-height:1.1;
     }
-    .assign[disabled]{opacity:.25; cursor:not-allowed}
+    .assign[disabled]{opacity:.28; cursor:not-allowed}
     .assign.active{ border-color:#2d7bd8; box-shadow:0 0 0 2px rgba(45,123,216,.25) inset}
+    .assign.novice{ border-style:dashed; border-color:#755a2a; background:#1a1710 }
+    .assign.novice.active{ box-shadow:0 0 0 2px rgba(242,167,75,.25) inset; border-color:#f2a74b }
     .badge{
       display:inline-flex; align-items:center; justify-content:center;
-      min-width:28px; padding:2px 6px; border-radius:999px; font-size:11px;
+      min-width:24px; padding:1px 6px; border-radius:999px; font-size:10px;
       border:1px solid var(--muted); color:var(--sub);
     }
-    .abs{
-      background:#2a1a1a; border-color:#5a2d2d; color:#ffb3b3;
-    }
-    .muted{ color:var(--sub) }
-    .footbar{ display:flex; gap:8px; justify-content:center; margin:16px 0 4px }
+    .abs{ background:#2a1a1a; border-color:#5a2d2d; color:#ffb3b3 }
+    .footbar{ display:flex; gap:8px; justify-content:center; margin:12px 0 2px }
     .hidden{ display:none !important }
     /* Modal */
     .modal-backdrop{
@@ -79,7 +88,18 @@
     .row input[type="text"]{ flex:1; padding:10px; background:#0f131b; color:var(--text); border:1px solid var(--line); border-radius:10px }
     .hint{ font-size:12px; color:var(--sub) }
     .pill{ font-size:11px; border:1px solid var(--line); padding:2px 6px; border-radius:999px; color:var(--sub) }
-    .sticky-note{font-size:12px; color:var(--sub); margin-top:8px}
+    .sticky-note{font-size:12px; color:var(--sub); margin:8px 0}
+    /* iPhone affinage */
+    @media (max-width: 430px){
+      h1{ font-size:15px }
+      input[type="date"]{ font-size:13px; padding:5px 6px }
+      .btn{ font-size:12px; padding:6px 8px }
+      th:first-child, td:first-child{ min-width: 140px }
+      thead th{ font-size:11px; padding:6px 4px }
+      tbody td{ font-size:11px; padding:4px 3px }
+      .assign{ min-width:46px; padding:4px 5px; border-radius:7px; font-size:10.5px }
+      .badge{ min-width:22px; font-size:9.5px; padding:1px 5px }
+    }
   </style>
 </head>
 <body>
@@ -95,10 +115,12 @@
   <div class="wrap">
     <div id="notice" class="sticky-note"></div>
 
-    <table id="roleTable" class="hidden">
-      <thead id="thead"></thead>
-      <tbody id="tbody"></tbody>
-    </table>
+    <div class="table-wrap">
+      <table id="roleTable" class="hidden">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
 
     <div class="footbar">
       <button class="btn approve" id="validateBtn">Valider</button>
@@ -114,8 +136,8 @@
         <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec">
       </div>
       <div class="hint">
-        Colle ici l’URL de ton déploiement WebApp <b>Google Apps Script</b> (réponse JSON).<br>
-        L’index récupère dynamiquement <i>toutes</i> les colonnes de la feuille Équipe (sauf <b>ID</b> et <b>NOM</b>) pour créer les cases.
+        Colle l’URL WebApp Google Apps Script. Les colonnes sont lues depuis la feuille <b>Équipe</b> (tout sauf <b>ID</b> et <b>NOM</b>).<br>
+        <b>Règle :</b> <code>X</code> ou <code>N</code> permet l’affectation (avec <code>N</code>, l’agent est toujours dernier côté calcul).
       </div>
       <div class="footbar" style="justify-content:flex-end">
         <button class="btn" id="closeModal">Annuler</button>
@@ -125,41 +147,34 @@
   </div>
 
   <script>
-    // -------- Config & état
     const DEFAULT_FUNCTIONS = ["CM","LIV","HC","DK","DKT","STR","VL","CPO","CPV","SPE","FOR","DEL","CEQ"];
     const state = {
       apiUrl: localStorage.getItem('API_URL') || "",
       date: null,
       functions: [],
-      team: [],          // [{id, nom, skills:{FUNC:true/false}, tours:{FUNC:number}}]
-      assignments: {},   // {id: "FUNC"}
+      team: [],
+      assignments: {},
       retourAbs: new Set()
     };
 
-    // -------- Helpers
     const $ = (sel) => document.querySelector(sel);
     function isoDate(d){ return d.toISOString().slice(0,10); }
-    function todayLocal(){
-      const now = new Date();
-      const tzOff = now.getTimezoneOffset();
-      return new Date(now.getTime() - tzOff*60000); // to local ISO date for input
-    }
+    function todayLocal(){ const n=new Date(); return new Date(n.getTime()-n.getTimezoneOffset()*60000); }
     function setNotice(msg){ $('#notice').innerHTML = msg || ""; }
 
-    // -------- Chargement
     function init(){
       $('#datePicker').value = isoDate(todayLocal());
       state.date = $('#datePicker').value;
-      $('#settingsBtn').addEventListener('click', openSettings);
-      $('#closeModal').addEventListener('click', closeSettings);
-      $('#saveSettings').addEventListener('click', saveSettings);
+      $('#settingsBtn').addEventListener('click', () => $('#modal').classList.remove('hidden'));
+      $('#closeModal').addEventListener('click', () => $('#modal').classList.add('hidden'));
+      $('#saveSettings').addEventListener('click', () => {
+        state.apiUrl = $('#apiUrl').value.trim(); localStorage.setItem('API_URL', state.apiUrl);
+        $('#modal').classList.add('hidden'); reload();
+      });
       $('#reloadBtn').addEventListener('click', reload);
       $('#validateBtn').addEventListener('click', validate);
       $('#apiUrl').value = state.apiUrl;
-      $('#datePicker').addEventListener('change', () => {
-        state.date = $('#datePicker').value;
-        reload();
-      });
+      $('#datePicker').addEventListener('change', () => { state.date = $('#datePicker').value; reload(); });
       reload();
     }
 
@@ -169,11 +184,10 @@
         const data = await fetchData(state.apiUrl, state.date);
         applyData(data);
         renderTable();
-        setNotice(state.apiUrl ? 'Données chargées depuis l’API GAS.' :
-                 'Mode local (démo). Renseigne l’URL GAS (⚙️) pour charger ta feuille.');
-      }catch(err){
-        console.error(err);
-        setNotice('<span class="pill">Erreur</span> Impossible de charger les données.');
+        setNotice(state.apiUrl ? 'Données chargées depuis l’API GAS.' : 'Mode démo (renseigne ⚙️ pour activer l’API).');
+      }catch(e){
+        console.error(e);
+        setNotice('<b>Erreur</b> de chargement.');
       }
     }
 
@@ -184,7 +198,6 @@
         if(!res.ok) throw new Error('HTTP ' + res.status);
         return await res.json();
       }else{
-        // Fallback local — structure attendue par le rendu
         return mockData(date);
       }
     }
@@ -196,21 +209,14 @@
         {id:"78028", nom:"MALATRAIT JULIEN"},
         {id:"78090", nom:"SIMITSIDIS YOHAN"}
       ];
-      // Compétences : X = true (pour démo)
       const skills = {
-        "77836": {CM:true, LIV:true, HC:true, STR:false, VL:false, CPO:false, SPE:false, FOR:true, DEL:true, CEQ:true, DK:false, DKT:false, CPV:false},
-        "77985": {CM:false, LIV:false, HC:true, STR:true, VL:false, CPO:true, SPE:false, FOR:false, DEL:false, CEQ:false, DK:false, DKT:false, CPV:false},
-        "78028": {CM:false, LIV:false, HC:true, STR:true, VL:false, CPO:true, SPE:true, FOR:false, DEL:false, CEQ:false, DK:false, DKT:false, CPV:false},
-        "78090": {CM:false, LIV:false, HC:true, STR:true, VL:false, CPO:false, SPE:false, FOR:false, DEL:false, CEQ:false, DK:false, DKT:false, CPV:false},
+        "77836": {CM:'X', LIV:'X', HC:'X', STR:'', VL:'', CPO:'', SPE:'', FOR:'X', DEL:'X', CEQ:'X', DK:'', DKT:'', CPV:''},
+        "77985": {CM:'', LIV:'', HC:'X', STR:'X', VL:'', CPO:'X', SPE:'', FOR:'', DEL:'', CEQ:'', DK:'', DKT:'', CPV:''},
+        "78028": {CM:'', LIV:'', HC:'X', STR:'X', VL:'', CPO:'N', SPE:'X', FOR:'', DEL:'', CEQ:'', DK:'', DKT:'', CPV:''},
+        "78090": {CM:'', LIV:'', HC:'X', STR:'N', VL:'', CPO:'', SPE:'', FOR:'', DEL:'', CEQ:'', DK:'', DKT:'', CPV:''},
       };
-      const tours = {}; // chiffres de tour (optionnel)
-      for(const id in skills){
-        tours[id] = {};
-        DEFAULT_FUNCTIONS.forEach(f => tours[id][f] = Math.floor(Math.random()*12)+1);
-      }
-      return {date, functions: DEFAULT_FUNCTIONS, team: team.map(p => ({
-        id:p.id, nom:p.nom, skills: skills[p.id] || {}, tours: tours[p.id] || {}
-      })), assignments: {} };
+      const tours = {}; for(const id in skills){ tours[id] = {}; DEFAULT_FUNCTIONS.forEach(f => tours[id][f] = Math.floor(Math.random()*12)+1); }
+      return {date, functions: DEFAULT_FUNCTIONS, team: team.map(p => ({ id:p.id, nom:p.nom, skills: skills[p.id] || {}, tours: tours[p.id] || {} })), assignments: {} };
     }
 
     function applyData(data){
@@ -221,22 +227,17 @@
       state.retourAbs = new Set();
     }
 
-    // -------- Rendu
     function renderTable(){
-      const thead = $('#thead'); const tbody = $('#tbody');
-      const table = $('#roleTable'); table.classList.remove('hidden');
-      // En-têtes
-      thead.innerHTML = "";
+      const thead = $('#thead'), tbody = $('#tbody');
+      $('#roleTable').classList.remove('hidden');
+      thead.innerHTML = ""; tbody.innerHTML = "";
+
       const trh = document.createElement('tr');
       const thName = document.createElement('th'); thName.textContent = "Nom"; trh.appendChild(thName);
-      state.functions.forEach(fn => {
-        const th = document.createElement('th'); th.textContent = fn; trh.appendChild(th);
-      });
+      state.functions.forEach(fn => { const th=document.createElement('th'); th.textContent=fn; trh.appendChild(th); });
       const thAbs = document.createElement('th'); thAbs.textContent = "Retour ABS"; trh.appendChild(thAbs);
       thead.appendChild(trh);
 
-      // Lignes équipe
-      tbody.innerHTML = "";
       for(const person of state.team){
         const tr = document.createElement('tr');
         const tdName = document.createElement('td'); tdName.textContent = person.nom || ""; tr.appendChild(tdName);
@@ -244,38 +245,36 @@
         state.functions.forEach(fn => {
           const td = document.createElement('td');
           const cell = document.createElement('div'); cell.className = 'cell';
-          const skill = !!(person.skills && (person.skills[fn] === true || (typeof person.skills[fn] === 'string' && person.skills[fn].toUpperCase() === 'X')));
-          
+
+          const raw = person.skills ? person.skills[fn] : '';
+          const val = (typeof raw === 'string') ? raw.trim().toUpperCase() : (raw === true ? 'X' : '');
+          const canDo = (val === 'X' || val === 'N');
+          const isNovice = (val === 'N');
+
           const btn = document.createElement('button');
-          btn.className = 'assign';
+          btn.className = 'assign' + (isNovice ? ' novice' : '');
           btn.textContent = fn;
-          btn.disabled = !skill;
+          btn.disabled = !canDo;
+          if(isNovice){ btn.title = "Peut occuper la fonction mais sera toujours dernier au tour"; }
 
           const badge = document.createElement('span');
           badge.className = 'badge';
           const tour = person.tours && (person.tours[fn] ?? "");
           badge.textContent = tour !== "" && tour !== undefined ? "#" + tour : "-";
 
-          if(state.assignments[person.id] === fn){
-            btn.classList.add('active');
-          }
+          if(state.assignments[person.id] === fn){ btn.classList.add('active'); }
 
           btn.addEventListener('click', () => {
             if(btn.disabled) return;
-            // Règle: 1 fonction par jour et par personne
             if(state.assignments[person.id] === fn){
               delete state.assignments[person.id];
               btn.classList.remove('active');
             }else{
-              // désactiver l'ancienne cellule active de la ligne
-              const rowBtns = tr.querySelectorAll('.assign.active');
-              rowBtns.forEach(b => b.classList.remove('active'));
+              tr.querySelectorAll('.assign.active').forEach(b => b.classList.remove('active'));
               state.assignments[person.id] = fn;
               btn.classList.add('active');
-              // toute sortie ABS est annulée
               state.retourAbs.delete(person.id);
-              const absBtn = tr.querySelector('.assign.abs');
-              if(absBtn) absBtn.classList.remove('active');
+              const absBtn = tr.querySelector('.assign.abs'); if(absBtn) absBtn.classList.remove('active');
             }
           });
 
@@ -285,17 +284,12 @@
           tr.appendChild(td);
         });
 
-        // Retour ABS
         const tdAbs = document.createElement('td');
         const cellAbs = document.createElement('div'); cellAbs.className = 'cell';
-        const btnAbs = document.createElement('button');
-        btnAbs.className = 'assign abs';
-        btnAbs.textContent = 'RETOUR ABS';
+        const btnAbs = document.createElement('button'); btnAbs.className = 'assign abs'; btnAbs.textContent = 'RETOUR ABS';
         btnAbs.addEventListener('click', () => {
-          // annule l'affectation du jour et passe la personne en "retour abs"
           delete state.assignments[person.id];
           state.retourAbs.add(person.id);
-          // visuel
           tr.querySelectorAll('.assign').forEach(b => b.classList.remove('active'));
           btnAbs.classList.add('active');
         });
@@ -307,43 +301,16 @@
       }
     }
 
-    // -------- Actions
-    function openSettings(){ $('#modal').classList.remove('hidden'); }
-    function closeSettings(){ $('#modal').classList.add('hidden'); }
-    function saveSettings(){
-      const val = $('#apiUrl').value.trim();
-      state.apiUrl = val;
-      localStorage.setItem('API_URL', val);
-      closeSettings();
-      reload();
-    }
-
     async function validate(){
-      const payload = {
-        date: state.date,
-        assignments: state.assignments,
-        retourAbs: Array.from(state.retourAbs)
-      };
-      if(!state.apiUrl){
-        alert('Mode démo : colle ton URL GAS (⚙️) pour envoyer les données.');
-        return;
-      }
+      const payload = { date: state.date, assignments: state.assignments, retourAbs: Array.from(state.retourAbs) };
+      if(!state.apiUrl){ alert('Mode démo : colle ton URL GAS (⚙️) pour envoyer.'); return; }
       try{
-        const res = await fetch(state.apiUrl, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
-        });
+        const res = await fetch(state.apiUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         if(!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        alert(data?.message || 'Enregistré !');
-      }catch(e){
-        console.error(e);
-        alert('Erreur lors de l\'enregistrement.');
-      }
+        const data = await res.json(); alert(data?.message || 'Enregistré !');
+      }catch(e){ console.error(e); alert('Erreur lors de l’enregistrement.'); }
     }
 
-    // Boot
     init();
   </script>
 </body>
