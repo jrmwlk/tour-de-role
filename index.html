@@ -44,7 +44,7 @@
     .assign[disabled]{opacity:.28; cursor:not-allowed}
     /* Bouton actif en ROUGE */
     .assign.active{ border-color:var(--red); background:var(--red-bg); color:var(--red-soft); box-shadow:0 0 0 2px rgba(216,45,45,.25) inset }
-    .assign.driving{ border-color:#355a2a; background:#131a25 }   /* C = conduite (état neutre) */
+    .assign.driving{ border-color:#355a8a; background:#131a25 }   /* C = conduite (état neutre) */
     .assign.fixed{ border-color:#2b4d2e; background:#151e16 }     /* nombre = tour fixe (état neutre) */
     .assign.info{ border-color:#3a3f4a; background:#1a1f28 }      /* fonctions info-only (pas de tour) */
     .badge{ display:inline-flex; align-items:center; justify-content:center; min-width:24px; padding:1px 6px; border-radius:999px; font-size:10px;
@@ -53,11 +53,24 @@
     .abs{ background:#2a1a1a; border-color:#5a2d2d; color:#ffb3b3 }
     .footbar{ display:flex; gap:8px; justify-content:center; margin:12px 0 2px }
     .hidden{ display:none !important }
+
+    /* Carte historique */
+    .history-wrap{ margin-top:16px }
+    .card{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px }
+    .card h2{ margin:0 0 8px 0; font-size:14px; color:var(--sub) }
+    .hist-table{ width:100%; border-collapse:separate; border-spacing:0 }
+    .hist-table th, .hist-table td{ border-bottom:1px solid var(--line); padding:8px 6px; text-align:left; font-size:12px }
+    .hist-table th{ color:var(--sub); background:#12161f; position:sticky; top:0 }
+    .tag{ display:inline-block; border:1px solid var(--muted); border-radius:999px; padding:2px 6px; font-size:11px; margin:1px 4px 1px 0; color:var(--sub) }
+    .tag.fn{ border-color:#2d7bd8 }
+    .tag.abs{ border-color:#5a2d2d; color:#ffb3b3 }
+
     @media (max-width: 430px){
       h1{ font-size:15px } input[type="date"]{ font-size:13px; padding:5px 6px } .btn{ font-size:12px; padding:6px 8px }
       th:first-child, td:first-child{ min-width: 140px } thead th{ font-size:11px; padding:6px 4px } tbody td{ font-size:11px; padding:4px 3px }
       .assign{ min-width:46px; padding:4px 5px; border-radius:7px; font-size:10.5px } .badge{ min-width:22px; font-size:9.5px; padding:1px 5px }
       .logo{ height:44px }
+      .hist-table th, .hist-table td{ font-size:11px; padding:6px 4px }
     }
   </style>
 </head>
@@ -72,7 +85,6 @@
       <h1>Tour de rôle</h1>
     </div>
     <div class="tools" aria-hidden="true" style="opacity:0; pointer-events:none">
-      <!-- espaceur pour centrer parfaitement la brand -->
       <input type="date" style="visibility:hidden; width:0">
       <button class="btn" style="visibility:hidden">↻</button>
     </div>
@@ -91,13 +103,29 @@
     <div class="footbar">
       <button class="btn approve" id="validateBtn">Valider</button>
     </div>
+
+    <!-- HISTORIQUE -->
+    <div class="history-wrap" id="historySection" style="display:none">
+      <div class="card">
+        <h2>Historique récent</h2>
+        <div id="historyNotice" class="sticky-note" style="margin-bottom:8px"></div>
+        <div class="table-wrap" style="border:none; background:transparent">
+          <table class="hist-table" id="historyTable">
+            <thead>
+              <tr><th>Date</th><th>Affectations</th><th>Retours ABS</th></tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
-    // Fonctions sans tour
     const INFO_ONLY = new Set(["VL","CEQ","FOR","DEL"]);
     const DEFAULT_FUNCTIONS = ["CM","LIV","HC","DK","DKT","STR","VL","CPO","CPV","SPE","FOR","DEL","CEQ"];
     const API_URL = "https://script.google.com/macros/s/AKfycbyylZcJzhDxkGpx-XuVjBkobtdD3Ofs4tOTlY2yK93tF-CatVs2v2SaM25En_z86cSK6Q/exec";
+    const HISTORY_DAYS = 7;
 
     const state = {
       date: new Date().toISOString().slice(0,10),
@@ -125,6 +153,7 @@
         applyData(data);
         renderTable();
         setNotice('Données chargées depuis l’API.');
+        await loadHistory();
       }catch(e){
         console.error(e);
         setNotice('<b>Erreur</b> de chargement API.');
@@ -142,12 +171,11 @@
       state.functions = Array.from(data.functions || []).filter(f => !/^ID$|^NOM$/i.test(f));
       if(state.functions.length === 0) state.functions = DEFAULT_FUNCTIONS;
       state.team = data.team || [];
-      state.assignments = data.assignments || { };
+      state.assignments = data.assignments || {};
       state.retourAbs = new Set();
     }
 
     function parseSkill(valRaw){
-      // 'X', 'C', '1..15' -> activable ; sinon non
       if(valRaw === null || valRaw === undefined) return {canDo:false, type:null, fixedRank:null};
       const s = String(valRaw).trim().toUpperCase();
       if(s === 'X') return {canDo:true, type:'normal',  fixedRank:null};
@@ -247,7 +275,66 @@
         const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         if(!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json(); alert(data?.message || 'Enregistré !');
+        await loadHistory();
       }catch(e){ console.error(e); alert('Erreur lors de l’enregistrement.'); }
+    }
+
+    // -------- Historique --------
+    async function loadHistory(){
+      const url = API_URL + (API_URL.includes('?') ? '&' : '?') + 'withHistory=1&days=' + encodeURIComponent(HISTORY_DAYS);
+      const body = $('#historyBody');
+      const section = $('#historySection');
+      const notice = $('#historyNotice');
+      notice.textContent = 'Chargement de l’historique…';
+      section.style.display = 'block';
+      body.innerHTML = '';
+
+      try{
+        const res = await fetch(url, { headers:{ 'Accept':'application/json' } });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if(!data || !Array.isArray(data.history) || data.history.length === 0){
+          notice.textContent = 'Historique non disponible.';
+          return;
+        }
+        notice.textContent = '';
+        for(const day of data.history){
+          const tr = document.createElement('tr');
+          const tdDate = document.createElement('td'); tdDate.textContent = day.date || ''; tr.appendChild(tdDate);
+
+          const tdA = document.createElement('td');
+          const tdR = document.createElement('td');
+
+          if(Array.isArray(day.assignments) && day.assignments.length){
+            day.assignments.forEach(a => {
+              const span = document.createElement('span');
+              span.className = 'tag fn';
+              span.textContent = (a.nom ? a.nom + ' ' : '') + '(' + (a.fonction || a.fn || '?') + ')';
+              tdA.appendChild(span);
+            });
+          } else {
+            tdA.innerHTML = '<span class="tag">—</span>';
+          }
+
+          if(Array.isArray(day.retourAbs) && day.retourAbs.length){
+            day.retourAbs.forEach(p => {
+              const span = document.createElement('span');
+              span.className = 'tag abs';
+              span.textContent = p.nom || p.id || 'ID?';
+              tdR.appendChild(span);
+            });
+          } else {
+            tdR.innerHTML = '<span class="tag">—</span>';
+          }
+
+          tr.appendChild(tdA);
+          tr.appendChild(tdR);
+          body.appendChild(tr);
+        }
+      }catch(e){
+        console.error(e);
+        notice.textContent = 'Historique non disponible.';
+      }
     }
 
     init();
